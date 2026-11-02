@@ -1,0 +1,1118 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1B4F72">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>Buscador de Pacientes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: app de una columna en el celular (buscar · lista · paquete con barra inferior);
+   en pantallas anchas, resultados a la izquierda y ficha a la derecha. */
+:root {
+  --bg: #EEF2F4;
+  --card: #FFFFFF;
+  --fg: #17242E;
+  --muted: #5E6E79;
+  --line: #D6DEE3;
+  --ink: #1B4F72;
+  --accent: #1F618D;
+  --accent-soft: #E3EEF6;
+  --ok: #1E8449;
+  --ok-soft: #E3F3E9;
+  --danger: #B03A2E;
+  --urg: #C0392B;
+  --les: #B9770E;
+  --egr: #1F618D;
+  --f-display: "Archivo", "Arial Narrow", system-ui, sans-serif;
+  --f-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "Consolas", monospace;
+  --r: 10px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0F171D; --card: #17222B; --fg: #E4EBEF; --muted: #93A3AE; --line: #2A3843;
+    --ink: #9CC8E6; --accent: #5DA3D3; --accent-soft: #1B3242; --ok: #52BE80; --ok-soft: #18342A;
+    --danger: #E6786C; --urg: #EC7063; --les: #F0B254; --egr: #6CB4E4; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0F171D; --card: #17222B; --fg: #E4EBEF; --muted: #93A3AE; --line: #2A3843;
+  --ink: #9CC8E6; --accent: #5DA3D3; --accent-soft: #1B3242; --ok: #52BE80; --ok-soft: #18342A;
+  --danger: #E6786C; --urg: #EC7063; --les: #F0B254; --egr: #6CB4E4; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body {
+  background: var(--bg); color: var(--fg); font-family: var(--f-body); font-size: 15px; line-height: 1.4;
+  padding-left: max(12px, env(safe-area-inset-left, 0px)); padding-right: max(12px, env(safe-area-inset-right, 0px));
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+button, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.mono { font-family: var(--f-mono); font-size: .92em; letter-spacing: .02em; }
+.u { color: var(--urg); } .l { color: var(--les); } .e { color: var(--egr); }
+
+/* ---------- cabecera */
+body { margin: 0; padding-top: env(safe-area-inset-top, 0px); }
+header.top {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg);
+  padding-block: 10px 8px; display: flex; flex-direction: column; gap: 8px;
+}
+.marca { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.marca h1 { margin: 0; white-space: nowrap; font-family: var(--f-display); font-weight: 800; font-size: 1.2rem; letter-spacing: -.01em; color: var(--ink); }
+.marca .sub { color: var(--muted); font-size: .75rem; text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.busca { display: flex; gap: 6px; }
+.busca input {
+  flex: 1; min-width: 0; border: 2px solid var(--line); background: var(--card); border-radius: var(--r);
+  padding: 10px 12px; font-size: 1.05rem;
+}
+.busca input:focus { border-color: var(--accent); outline: none; }
+.busca .x { border: 0; background: transparent; color: var(--muted); padding: 0 6px; font-size: 1.2rem; }
+.chips { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
+.chips::-webkit-scrollbar { display: none; }
+.chip {
+  flex: none; border: 1px solid var(--line); background: var(--card); border-radius: 999px; padding: 4px 11px;
+  font-size: .8rem; font-weight: 500; color: var(--muted);
+}
+.chip[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--ink); font-weight: 600; }
+.chip.b[aria-pressed="true"].u { border-color: var(--urg); color: var(--urg); background: transparent; }
+.chip.b[aria-pressed="true"].l { border-color: var(--les); color: var(--les); background: transparent; }
+.chip.b[aria-pressed="true"].e { border-color: var(--egr); color: var(--egr); background: transparent; }
+.sepv { flex: none; width: 1px; background: var(--line); margin: 3px 2px; }
+
+/* ---------- cuerpo */
+main { padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px)); }
+.vista[hidden] { display: none; }
+.barra-res { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 6px 0 8px; flex-wrap: wrap; }
+.barra-res .cuenta { font-weight: 600; color: var(--ink); font-size: .9rem; }
+.barra-res .cuenta small { color: var(--muted); font-weight: 400; }
+.btn {
+  border: 1px solid var(--accent); background: var(--card); color: var(--accent); border-radius: 8px;
+  padding: 6px 12px; font-weight: 600; font-size: .85rem;
+}
+.btn.solido { background: var(--accent); color: #fff; }
+.btn.verde { background: var(--ok); border-color: var(--ok); color: #fff; }
+.btn.peligro { border-color: var(--danger); color: var(--danger); }
+.btn:disabled { opacity: .45; cursor: default; }
+
+.lista-tarjetas { display: flex; flex-direction: column; gap: 8px; }
+.tarjeta {
+  background: var(--card); border: 1px solid var(--line); border-radius: var(--r);
+  display: grid; grid-template-columns: 4px 1fr auto; overflow: hidden; min-width: 0; color: var(--fg);
+}
+.tarjeta .franja { background: var(--accent); }
+.tarjeta.u .franja { background: var(--urg); } .tarjeta.l .franja { background: var(--les); } .tarjeta.e .franja { background: var(--egr); }
+.tarjeta .cuerpo { padding: 9px 10px; min-width: 0; text-align: left; border: 0; background: transparent; }
+.tarjeta .linea1 { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.tarjeta .base { font-size: .7rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.tarjeta .fecha { font-size: .75rem; color: var(--muted); }
+.tarjeta .nom { font-weight: 600; font-size: 1rem; margin-top: 1px; overflow-wrap: anywhere; }
+.tarjeta .meta { font-size: .8rem; color: var(--muted); display: flex; gap: 10px; flex-wrap: wrap; }
+.tarjeta .dx { font-size: .8rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tarjeta .mas {
+  border: 0; border-left: 1px solid var(--line); background: transparent; width: 52px; font-size: 1.4rem;
+  color: var(--ok); font-weight: 600;
+}
+.tarjeta .mas.ya { color: var(--muted); font-size: 1.1rem; }
+.tarjeta .mas.quitar { color: var(--danger); font-size: 1.1rem; }
+.aviso-lim { text-align: center; color: var(--muted); font-size: .85rem; padding: 10px; }
+
+.vacio { text-align: center; padding: 34px 12px; color: var(--muted); }
+.vacio h2 { font-family: var(--f-display); color: var(--ink); font-size: 1.15rem; margin: 0 0 6px; }
+.vacio p { margin: 4px auto; max-width: 34ch; }
+.vacio .btn { margin-top: 12px; }
+
+/* ---------- ficha (detalle) */
+.ficha {
+  position: fixed; inset: 0; z-index: 20; background: var(--bg); display: flex; flex-direction: column;
+  padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: max(12px, env(safe-area-inset-left, 0px)); padding-right: max(12px, env(safe-area-inset-right, 0px));
+}
+.ficha[hidden] { display: none !important; }
+.ficha .cab { display: flex; align-items: center; gap: 8px; padding-block: 10px 6px; }
+.ficha .volver { border: 0; background: transparent; font-size: 1.4rem; padding: 2px 6px; color: var(--accent); }
+.ficha .tit { flex: 1; min-width: 0; }
+.ficha .tit .base { font-size: .72rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.ficha .tit h2 { margin: 0; font-family: var(--f-display); font-size: 1.15rem; line-height: 1.2; overflow-wrap: anywhere; }
+.ficha .resumen { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 8px 10px; font-size: .85rem; display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; }
+.ficha .resumen dt { color: var(--muted); }
+.ficha .resumen dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.ficha .acciones { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0; }
+.ficha .filtro { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; }
+.ficha .filtro input { flex: 1; min-width: 0; border: 1px solid var(--line); background: var(--card); border-radius: 8px; padding: 6px 9px; font-size: .9rem; }
+.ficha .filtro label { font-size: .8rem; color: var(--muted); display: flex; gap: 4px; align-items: center; white-space: nowrap; }
+.campos { flex: 1; overflow-y: auto; background: var(--card); border: 1px solid var(--line); border-radius: var(--r); margin-bottom: 8px; }
+.campos table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+.campos th { position: sticky; top: 0; background: var(--accent-soft); color: var(--ink); text-align: left; padding: 5px 8px; font-size: .75rem; letter-spacing: .05em; text-transform: uppercase; }
+.campos td { padding: 5px 8px; border-top: 1px solid var(--line); vertical-align: top; overflow-wrap: anywhere; }
+.campos td:first-child { color: var(--muted); width: 42%; }
+
+/* ---------- paquete / ajustes */
+.panel { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 12px; margin-bottom: 10px; }
+.panel h3 { margin: 0 0 8px; font-family: var(--f-display); font-size: 1rem; color: var(--ink); }
+.panel p { margin: 4px 0; font-size: .88rem; color: var(--muted); }
+.panel .fila { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.bases-info { display: grid; gap: 6px; margin-top: 6px; }
+.bases-info div { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: baseline; gap: 8px; font-size: .88rem; border-top: 1px solid var(--line); padding-top: 6px; }
+.bases-info b { font-variant-numeric: tabular-nums; }
+.progreso { height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; margin-top: 8px; }
+.progreso i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .2s; }
+.credito { text-align: center; color: var(--muted); font-size: .78rem; padding: 14px 0 4px; }
+.banda-ejemplo { background: var(--accent-soft); color: var(--ink); border-radius: 8px; padding: 6px 10px; font-size: .8rem; margin-bottom: 8px; }
+
+/* ---------- barra inferior */
+nav.abajo {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 8; background: var(--card); border-top: 1px solid var(--line);
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: max(12px, env(safe-area-inset-left, 0px)); padding-right: max(12px, env(safe-area-inset-right, 0px));
+}
+nav.abajo button { border: 0; background: transparent; padding: 9px 4px 10px; font-size: .78rem; font-weight: 600; color: var(--muted); display: flex; flex-direction: column; align-items: center; gap: 2px; }
+nav.abajo button .ic { font-size: 1.15rem; line-height: 1; }
+nav.abajo button[aria-current="page"] { color: var(--accent); }
+nav.abajo .num { background: var(--ok); color: #fff; border-radius: 999px; padding: 0 6px; font-size: .7rem; margin-left: 2px; }
+
+/* ---------- PIN */
+.candado {
+  position: fixed; inset: 0; z-index: 50; background: var(--bg); display: flex; align-items: center; justify-content: center;
+  padding: max(16px, env(safe-area-inset-left, 0px));
+}
+.candado[hidden] { display: none !important; }
+.candado .caja { width: 100%; max-width: 320px; text-align: center; display: flex; flex-direction: column; gap: 10px; }
+.candado h2 { font-family: var(--f-display); color: var(--ink); margin: 0; }
+.candado input { text-align: center; font-size: 1.6rem; letter-spacing: .5em; padding: 10px; border: 2px solid var(--line); border-radius: var(--r); background: var(--card); font-family: var(--f-mono); }
+.candado .err { color: var(--danger); font-size: .88rem; min-height: 1.2em; }
+.candado .link { border: 0; background: transparent; color: var(--muted); text-decoration: underline; font-size: .82rem; }
+
+.toast {
+  position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(70px + env(safe-area-inset-bottom, 0px)); z-index: 60;
+  background: var(--fg); color: var(--bg); padding: 8px 14px; border-radius: 8px; font-size: .88rem; max-width: 90vw; text-align: center;
+}
+.confirma { background: var(--card); border: 1px solid var(--danger); border-radius: var(--r); padding: 10px; margin-top: 8px; font-size: .88rem; }
+.confirma[hidden] { display: none; }
+
+@media (min-width: 900px) {
+  body { max-width: 1200px; margin: 0 auto; }
+  main.ancho { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; }
+  .ficha.lado { position: sticky; top: 150px; inset: auto; height: calc(100vh - 230px); z-index: 1; padding: 0; background: transparent; }
+  .ficha.lado .volver { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+
+
+<div class="candado" id="candado" hidden>
+  <form class="caja" id="formPin" autocomplete="off">
+    <h2 id="pinTitulo">Escribe tu PIN</h2>
+    <p id="pinTexto" style="margin:0;color:var(--muted);font-size:.9rem">Protege los datos de pacientes guardados en este celular.</p>
+    <input id="pinEntrada" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="8" aria-label="PIN">
+    <div class="err" id="pinError"></div>
+    <button class="btn solido" type="submit" id="pinOk">Entrar</button>
+    <button class="link" type="button" id="pinOmitir" hidden>Ahora no, usar sin PIN</button>
+    <button class="link" type="button" id="pinOlvide">Olvidé mi PIN</button>
+    <div class="confirma" id="olvideConf" hidden>
+      Para quitar el PIN hay que borrar el paquete y la lista de este celular. Después vuelves a cargar el paquete.
+      <div class="fila" style="display:flex;gap:8px;margin-top:8px;justify-content:center">
+        <button class="btn peligro" type="button" id="olvideSi">Borrar datos y PIN</button>
+        <button class="btn" type="button" id="olvideNo">Cancelar</button>
+      </div>
+    </div>
+  </form>
+</div>
+
+<header class="top">
+  <div class="marca">
+    <h1>Buscador de Pacientes</h1>
+    <span class="sub" id="subPaquete">Sin paquete</span>
+  </div>
+  <div class="busca">
+    <input id="q" type="search" placeholder="CURP, nombre o apellidos" autocomplete="off" autocapitalize="characters" enterkeyhint="search" aria-label="Buscar">
+    <button class="x" id="limpiar" aria-label="Borrar búsqueda" type="button">✕</button>
+  </div>
+  <div class="chips" role="group" aria-label="Opciones de búsqueda">
+    <button class="chip modo" data-modo="auto" aria-pressed="true" type="button">Automático</button>
+    <button class="chip modo" data-modo="curp" aria-pressed="false" type="button">CURP</button>
+    <button class="chip modo" data-modo="nom" aria-pressed="false" type="button">Nombre(s)</button>
+    <button class="chip modo" data-modo="ap1" aria-pressed="false" type="button">1er apellido</button>
+    <button class="chip modo" data-modo="ap2" aria-pressed="false" type="button">2º apellido</button>
+    <span class="sepv"></span>
+    <button class="chip b u" data-base="Urgencias" aria-pressed="true" type="button">Urgencias</button>
+    <button class="chip b l" data-base="Lesiones" aria-pressed="true" type="button">Lesiones</button>
+    <button class="chip b e" data-base="Egresos" aria-pressed="true" type="button">Egresos</button>
+  </div>
+</header>
+
+<main id="main">
+  <section class="vista" id="vBuscar">
+    <div id="bandaEjemplo" class="banda-ejemplo" hidden>Estás viendo <b>datos de ejemplo ficticios</b>. Carga tu paquete en la pestaña Paquete.</div>
+    <div class="barra-res" id="barraRes" hidden>
+      <span class="cuenta" id="cuenta"></span>
+      <button class="btn verde" id="agregarTodos" type="button">＋ Agregar todos</button>
+    </div>
+    <div class="lista-tarjetas" id="resultados"></div>
+    <div id="vacioBuscar" class="vacio">
+      <h2>Busca por CURP, nombre o apellidos</h2>
+      <p>Escribe al menos 3 letras. No importan acentos ni mayúsculas.</p>
+      <p>Toca un resultado para ver su ficha completa; con <b>＋</b> lo agregas a la lista para exportar.</p>
+    </div>
+    <div id="sinPaquete" class="vacio" hidden>
+      <h2>Carga tu paquete de bases</h2>
+      <p>En la PC, en el Buscador de Pacientes, usa <b>📱 Paquete para celular…</b> y pasa el archivo <span class="mono">.bpaq</span> a este celular.</p>
+      <button class="btn solido" type="button" data-ir="paquete">Cargar paquete</button>
+      <button class="btn" type="button" id="verEjemplo">Probar con datos de ejemplo</button>
+    </div>
+  </section>
+
+  <section class="vista" id="vLista" hidden>
+    <div class="barra-res">
+      <span class="cuenta" id="cuentaLista">Lista vacía</span>
+      <span style="display:flex;gap:6px">
+        <button class="btn peligro" id="vaciar" type="button">Vaciar</button>
+        <button class="btn" id="copiarAbrir" type="button">Copiar</button>
+        <button class="btn verde" id="exportar" type="button">Exportar a Excel</button>
+      </span>
+    </div>
+    <div class="confirma" id="vaciarConf" hidden>
+      ¿Quitar todos los registros de la lista?
+      <span style="display:inline-flex;gap:6px;margin-left:6px">
+        <button class="btn peligro" id="vaciarSi" type="button">Sí, vaciar</button>
+        <button class="btn" id="vaciarNo" type="button">No</button>
+      </span>
+    </div>
+    <div class="panel" id="panelListo" hidden>
+      <h3>Excel listo</h3>
+      <p id="plTexto">Se guardó en la carpeta Descargas del celular.</p>
+      <div class="fila">
+        <button class="btn solido" id="plCompartir" type="button" hidden>Compartir (WhatsApp, Drive, correo…)</button>
+        <button class="btn" id="plOtraVez" type="button">Descargar otra vez</button>
+        <button class="btn" id="plCerrar" type="button">Cerrar</button>
+      </div>
+    </div>
+    <div class="panel" id="panelExport" hidden>
+      <h3 id="pxTitulo">Copiar la lista para Excel</h3>
+      <p id="pxMotivo"></p>
+      <p>Copia la tabla y pégala en <b>Excel</b> o <b>Hojas de cálculo de Google</b> del celular (mantén presionada la celda A1 › Pegar). Se acomoda en columnas.</p>
+      <div class="fila">
+        <button class="btn solido" id="pxResumen" type="button">Copiar Resumen</button>
+        <button class="btn solido" id="pxFichas" type="button">Copiar Fichas (Campo | Valor)</button>
+        <button class="btn solido" id="pxDatos" type="button">Copiar Datos completos</button>
+      </div>
+      <div class="fila" id="pxFilaPermisos" hidden>
+        <button class="btn" id="pxPermisos" type="button">Abrir permisos de la app</button>
+        <button class="btn" id="pxReintentar" type="button">Intentar guardar otra vez</button>
+      </div>
+      <textarea id="pxTexto" readonly hidden style="width:100%;height:140px;margin-top:8px;font-family:var(--f-mono);font-size:.75rem;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg)" aria-label="Texto para copiar"></textarea>
+      <div class="fila"><button class="btn" id="pxCerrar" type="button">Cerrar</button></div>
+    </div>
+    <div class="lista-tarjetas" id="tarjetasLista"></div>
+    <div id="vacioLista" class="vacio">
+      <h2>La lista está vacía</h2>
+      <p>Busca, y con <b>＋</b> agrega registros de una o varias búsquedas. Luego expórtalos juntos a Excel: Resumen, Fichas (Campo | Valor) y Datos completos.</p>
+    </div>
+  </section>
+
+  <section class="vista" id="vPaquete" hidden>
+    <div class="panel">
+      <h3>Paquete de bases</h3>
+      <p id="paqEstado">No hay paquete cargado en este celular.</p>
+      <div class="bases-info" id="paqBases"></div>
+      <div class="progreso" id="paqProg" hidden><i></i></div>
+      <div class="fila">
+        <label class="btn solido" for="archivo" style="display:inline-block">Cargar paquete (.bpaq)</label>
+        <input type="file" id="archivo" hidden>
+        <button class="btn peligro" id="borrarDatos" type="button">Borrar datos del celular</button>
+      </div>
+      <div class="confirma" id="borrarConf" hidden>
+        Se borran el paquete, la lista y el PIN de este celular. ¿Continuar?
+        <span style="display:inline-flex;gap:6px;margin-left:6px">
+          <button class="btn peligro" id="borrarSi" type="button">Sí, borrar</button>
+          <button class="btn" id="borrarNo" type="button">No</button>
+        </span>
+      </div>
+      <p style="margin-top:10px">El paquete se queda guardado solo en este celular; no se sube a ningún servidor.</p>
+    </div>
+    <div class="panel">
+      <h3>PIN de acceso</h3>
+      <p id="pinEstado">Sin PIN.</p>
+      <div class="fila">
+        <button class="btn" id="pinCambiar" type="button">Poner PIN</button>
+        <button class="btn peligro" id="pinQuitar" type="button" hidden>Quitar PIN</button>
+        <button class="btn" id="bloquear" type="button" hidden>Bloquear ahora</button>
+      </div>
+      <p>Con PIN, la app se bloquea al abrirla y después de 2 minutos fuera de ella.</p>
+    </div>
+    <div class="credito">Buscador de Pacientes · Hecho por Oscar Arredondo</div>
+  </section>
+
+  <aside class="ficha" id="ficha" hidden aria-label="Ficha del registro">
+    <div class="cab">
+      <button class="volver" id="cerrarFicha" type="button" aria-label="Volver">←</button>
+      <div class="tit"><div class="base" id="fBase"></div><h2 id="fNombre"></h2></div>
+    </div>
+    <dl class="resumen" id="fResumen"></dl>
+    <div class="acciones">
+      <button class="btn verde" id="fAgregar" type="button">＋ A la lista</button>
+      <button class="btn" id="fCurp" type="button">Ver CURP en las 3 bases</button>
+      <button class="btn" id="fCopiar" type="button">Copiar ficha</button>
+    </div>
+    <div class="filtro">
+      <input id="fFiltro" type="search" placeholder="Filtrar campos (ej. afeccion)" aria-label="Filtrar campos">
+      <label><input type="checkbox" id="fVacios"> Vacíos</label>
+    </div>
+    <div class="campos"><table><thead><tr><th>Campo</th><th>Valor</th></tr></thead><tbody id="fCampos"></tbody></table></div>
+    <textarea id="copiaRespaldo" hidden aria-hidden="true"></textarea>
+  </aside>
+</main>
+
+<nav class="abajo" aria-label="Secciones">
+  <button type="button" data-ir="buscar" aria-current="page"><span class="ic">⌕</span>Buscar</button>
+  <button type="button" data-ir="lista"><span class="ic">☰</span><span>Lista <span class="num" id="numLista" hidden>0</span></span></button>
+  <button type="button" data-ir="paquete"><span class="ic">⇩</span>Paquete</button>
+</nav>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+"use strict";
+/* ======================================================================= utilidades */
+const $ = (id) => document.getElementById(id);
+const BASES = ["Urgencias", "Lesiones", "Egresos"];
+const CLASE = { Urgencias: "u", Lesiones: "l", Egresos: "e" };
+const FECHA_COL = { Urgencias: "fecha_ingreso", Lesiones: "fecha_atencion", Egresos: "fecha_egreso" };
+const FECHA_TXT = { Urgencias: "Ingreso", Lesiones: "Atención", Egresos: "Egreso" };
+const COLOR_XLSX = { Urgencias: "C0392B", Lesiones: "D68910", Egresos: "1F618D" };
+const MAX_PINTAR = 200, MAX_LISTA = 20000;
+
+function norm(s) {
+  if (!s) return "";
+  s = String(s).toUpperCase();
+  if (/[^\x00-\x7F]/.test(s)) {
+    s = s.replace(/Ñ/g, "\u0001").normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\u0001/g, "Ñ");
+  }
+  return s.split(/\s+/).filter(Boolean).join(" ");
+}
+function esc(s) { return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
+function miles(n) { return n.toLocaleString("es-MX"); }
+let toastT;
+function toast(t, ms = 2600) {
+  const el = $("toast"); el.textContent = t; el.hidden = false;
+  clearTimeout(toastT); toastT = setTimeout(() => (el.hidden = true), ms);
+}
+const ls = {
+  get(k, d = null) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+  del(k) { try { localStorage.removeItem(k); } catch {} },
+};
+
+/* ======================================================================= almacén del paquete (IndexedDB) */
+const idb = {
+  abrir() {
+    return new Promise((ok, mal) => {
+      try {
+        const r = indexedDB.open("buscador_pacientes", 1);
+        r.onupgradeneeded = () => r.result.createObjectStore("kv");
+        r.onsuccess = () => ok(r.result); r.onerror = () => mal(r.error);
+      } catch (e) { mal(e); }
+    });
+  },
+  async op(modo, fn) {
+    const db = await this.abrir();
+    return new Promise((ok, mal) => {
+      const tx = db.transaction("kv", modo); const st = tx.objectStore("kv");
+      const r = fn(st); tx.oncomplete = () => ok(r && r.result); tx.onerror = () => mal(tx.error); tx.onabort = () => mal(tx.error);
+    });
+  },
+  get(k) { return this.op("readonly", (s) => s.get(k)); },
+  put(k, v) { return this.op("readwrite", (s) => s.put(v, k)); },
+  del(k) { return this.op("readwrite", (s) => s.delete(k)); },
+};
+
+/* ======================================================================= lectura del paquete .bpaq */
+async function inflar(blob) {
+  const ds = blob.stream().pipeThrough(new DecompressionStream("deflate"));
+  return await new Response(ds).text();
+}
+
+class BaseDatos {
+  constructor(info, archivo, inicio, filasBloque, sep) {
+    this.nombre = info.nombre; this.enc = info.enc; this.n = info.n; this.archivoOrigen = info.archivo || "";
+    this.idx = Object.fromEntries(this.enc.map((h, i) => [h, i]));
+    this.bloques = info.bloques; this.llavesInfo = info.llaves;
+    this.archivo = archivo; this.inicio = inicio; this.fb = filasBloque; this.sep = sep;
+    this.cache = new Map();
+    this.curp = []; this.nom = []; this.ap1 = []; this.ap2 = []; this.full = [];
+  }
+  async cargarLlaves() {
+    const { off, len } = this.llavesInfo;
+    const txt = await inflar(this.archivo.slice(this.inicio + off, this.inicio + off + len));
+    const lineas = txt ? txt.split("\n") : [];
+    const n = lineas.length;
+    this.curp = new Array(n); this.nom = new Array(n); this.ap1 = new Array(n); this.ap2 = new Array(n); this.full = new Array(n);
+    for (let i = 0; i < n; i++) {
+      const p = lineas[i].split("\t");
+      this.curp[i] = p[0] || ""; this.nom[i] = p[1] || ""; this.ap1[i] = p[2] || ""; this.ap2[i] = p[3] || "";
+      this.full[i] = [p[1], p[2], p[3]].filter(Boolean).join(" ");
+    }
+  }
+  async bloque(b) {
+    if (this.cache.has(b)) { const v = this.cache.get(b); this.cache.delete(b); this.cache.set(b, v); return v; }
+    const { off, len } = this.bloques[b];
+    const filas = (await inflar(this.archivo.slice(this.inicio + off, this.inicio + off + len))).split("\n");
+    this.cache.set(b, filas);
+    if (this.cache.size > 12) this.cache.delete(this.cache.keys().next().value);
+    return filas;
+  }
+  async fila(i) {
+    const filas = await this.bloque(Math.floor(i / this.fb));
+    const f = (filas[i % this.fb] || "").split(this.sep);
+    while (f.length < this.enc.length) f.push("");
+    return f;
+  }
+}
+
+async function abrirPaquete(archivo, progreso) {
+  const cab = new Uint8Array(await archivo.slice(0, 10).arrayBuffer());
+  const magia = new TextDecoder().decode(cab.slice(0, 6));
+  if (magia !== "BPAQ1\n") throw new Error("Este archivo no es un paquete del Buscador (.bpaq).");
+  const largo = new DataView(cab.buffer).getUint32(6, true);
+  const meta = JSON.parse(await archivo.slice(10, 10 + largo).text());
+  const inicio = 10 + largo;
+  const bases = {};
+  let k = 0;
+  for (const info of meta.bases) {
+    progreso && progreso(k / meta.bases.length, info.nombre);
+    const b = new BaseDatos(info, archivo, inicio, meta.filas_bloque, meta.sep || "\x1f");
+    await b.cargarLlaves();
+    bases[b.nombre] = b; k++;
+  }
+  progreso && progreso(1, "");
+  return { meta, bases };
+}
+
+/* ======================================================================= datos de ejemplo (ficticios) */
+function paqueteEjemplo() {
+  const enc = ["clues", "folio", "curp_paciente", "nombre", "primer_apellido", "segundo_apellido", "fecha_nacimiento", "edad",
+    "sexo", "sexo_des", "nombre_jurisdiccion", "FECHA", "cod_cie_afeccion_principal", "cod_cie_afeccion_principal_des"];
+  const filas = {
+    Urgencias: [
+      ["CLUESX00001", "00000101", "PRMA900101MDFXXX01", "ANA LUISA", "PRUEBA", "MUESTRA", "1990-01-01", "36", "2", "MUJER", "EJEMPLO NORTE", "2026-08-02", "J069", "INFECCION AGUDA DE LAS VIAS RESPIRATORIAS SUPERIORES"],
+      ["CLUESX00001", "00000102", "EJPL850505HDFXXX02", "JOSÉ", "EJEMPLO", "PÉREZ", "1985-05-05", "41", "1", "HOMBRE", "EJEMPLO NORTE", "2026-08-03", "S934", "ESGUINCE DEL TOBILLO"],
+    ],
+    Lesiones: [
+      ["CLUESX00002", "00000201", "EJPL850505HDFXXX02", "JOSÉ", "EJEMPLO", "PÉREZ", "1985-05-05", "41", "1", "HOMBRE", "EJEMPLO SUR", "2026-08-03", "S934", "ESGUINCE DEL TOBILLO"],
+      ["CLUESX00002", "00000202", "MUNP100710MDFXXX03", "MARÍA", "MUESTRA", "NÚÑEZ", "2010-07-10", "16", "2", "MUJER", "EJEMPLO SUR", "2026-08-05", "S525", "FRACTURA DE LA EPIFISIS INFERIOR DEL RADIO"],
+    ],
+    Egresos: [
+      ["CLUESX00003", "00000301", "PRMA900101MDFXXX01", "ANA LUISA", "PRUEBA", "MUESTRA", "1990-01-01", "36", "2", "MUJER", "EJEMPLO NORTE", "2026-08-06", "O800", "PARTO UNICO ESPONTANEO"],
+    ],
+  };
+  const bases = {};
+  for (const nombre of BASES) {
+    const e = enc.map((h) => (h === "FECHA" ? FECHA_COL[nombre] : h));
+    const b = new BaseDatos({ nombre, enc: e, n: filas[nombre].length, bloques: [], llaves: {} }, null, 0, 1, "\x1f");
+    b.memoria = filas[nombre];
+    b.fila = async (i) => b.memoria[i].slice();
+    b.memoria.forEach((f) => {
+      const c = (h) => f[e.indexOf(h)];
+      b.curp.push(norm(c("curp_paciente")).replace(/ /g, "")); b.nom.push(norm(c("nombre")));
+      b.ap1.push(norm(c("primer_apellido"))); b.ap2.push(norm(c("segundo_apellido")));
+      b.full.push([b.nom.at(-1), b.ap1.at(-1), b.ap2.at(-1)].filter(Boolean).join(" "));
+    });
+    bases[nombre] = b;
+  }
+  return { meta: { id: "ejemplo", creado: "datos de ejemplo", ejemplo: true }, bases };
+}
+
+/* ======================================================================= registro y campos */
+class Registro {
+  constructor(base, i, fila, consulta) { this.base = base.nombre; this.b = base; this.i = i; this.fila = fila; this.consulta = consulta || ""; }
+  v(c) { const i = this.b.idx[c]; return i == null ? "" : this.fila[i] || ""; }
+  get nombre() { return [this.v("nombre"), this.v("primer_apellido"), this.v("segundo_apellido")].filter(Boolean).join(" "); }
+  get fecha() { return this.v(FECHA_COL[this.base]); }
+  get edad() { const e = this.v("edad"), c = this.v("clave_edad_des"); return e && c && !c.toUpperCase().includes("AÑO") ? `${e} ${c.toLowerCase()}` : e; }
+  get dx() {
+    const d = this.v("cod_cie_afeccion_principal_des") || this.v("desc_afeccion_principal"), c = this.v("cod_cie_afeccion_principal");
+    return c && d && !d.includes(c) ? `${c} - ${d}` : d;
+  }
+  campos() {
+    const idx = this.b.idx, omitir = new Set();
+    for (const h of this.b.enc) for (const s of ["_des", "_desp"]) if (idx[h + s] != null) omitir.add(h + s);
+    const out = [];
+    for (const h of this.b.enc) {
+      if (omitir.has(h)) continue;
+      let v = this.v(h);
+      for (const s of ["_des", "_desp"]) {
+        const d = idx[h + s] != null ? this.v(h + s) : "";
+        if (d) v = !v || v === d ? d : `${d}  (${v})`;
+      }
+      const et = h.replace(/_/g, " ").trim();
+      out.push([et.charAt(0).toUpperCase() + et.slice(1).toLowerCase(), v]);
+    }
+    return out;
+  }
+}
+
+/* ======================================================================= estado */
+const E = {
+  paq: null, modo: "auto", activas: new Set(BASES), hits: [], consulta: "",
+  lista: [], listaSet: new Set(), actual: null, vista: "buscar",
+};
+const llaveDe = (base, i) => `${base}:${i}`;
+
+function guardarLista() {
+  if (!E.paq || E.paq.meta.ejemplo) return;
+  ls.set("bp_lista", { id: E.paq.meta.id, items: E.lista.map((x) => [x.base, x.i, x.consulta]) });
+}
+function restaurarLista() {
+  E.lista = []; E.listaSet = new Set();
+  const g = ls.get("bp_lista");
+  if (!g || !E.paq || g.id !== E.paq.meta.id) return;
+  for (const [base, i, consulta] of g.items || []) {
+    if (E.paq.bases[base] && i < E.paq.bases[base].n) { E.lista.push({ base, i, consulta }); E.listaSet.add(llaveDe(base, i)); }
+  }
+}
+
+/* ======================================================================= búsqueda */
+function buscar() {
+  const crudo = $("q").value.trim();
+  const q = norm(crudo);
+  if (!E.paq || q.length < 2) { E.hits = []; pintarResultados(); return; }
+  const tokens = q.split(" ");
+  const qc = q.replace(/ /g, "");
+  let modo = E.modo;
+  if (modo === "auto") modo = tokens.length === 1 && qc.length >= 4 && /\d/.test(qc) ? "curp" : "full";
+  const hits = [];
+  for (const nombre of BASES) {
+    const b = E.paq.bases[nombre];
+    if (!b || !E.activas.has(nombre)) continue;
+    const arr = { curp: b.curp, full: b.full, nom: b.nom, ap1: b.ap1, ap2: b.ap2 }[modo];
+    const n = arr.length;
+    if (modo === "full" && tokens.length > 1) {
+      for (let i = 0; i < n; i++) { const k = arr[i]; let ok = true; for (const t of tokens) if (!k.includes(t)) { ok = false; break; } if (ok) hits.push([nombre, i]); }
+    } else {
+      const t = modo === "curp" ? qc : q;
+      for (let i = 0; i < n; i++) if (arr[i].includes(t)) hits.push([nombre, i]);
+    }
+  }
+  E.hits = hits; E.consulta = crudo;
+  pintarResultados();
+}
+
+let pintadoId = 0;
+async function tarjeta(reg, enLista, quitar) {
+  const el = document.createElement("div");
+  el.className = `tarjeta ${CLASE[reg.base]}`;
+  el.innerHTML = `<div class="franja"></div>
+    <button class="cuerpo" type="button">
+      <div class="linea1"><span class="base ${CLASE[reg.base]}">${esc(reg.base)}</span><span class="fecha">${esc(FECHA_TXT[reg.base])} ${esc(reg.fecha)}</span></div>
+      <div class="nom">${esc(reg.nombre) || "<i>(sin nombre)</i>"}</div>
+      <div class="meta"><span class="mono">${esc(reg.v("curp_paciente"))}</span><span>${esc(reg.v("sexo_des"))}${reg.edad ? " · " + esc(reg.edad) : ""}</span>${quitar && reg.consulta ? `<span>búsqueda: ${esc(reg.consulta)}</span>` : ""}</div>
+      ${reg.dx ? `<div class="dx">${esc(reg.dx)}</div>` : ""}
+    </button>
+    <button class="mas ${quitar ? "quitar" : enLista ? "ya" : ""}" type="button" aria-label="${quitar ? "Quitar de la lista" : "Agregar a la lista"}">${quitar ? "✕" : enLista ? "✔" : "＋"}</button>`;
+  el.querySelector(".cuerpo").onclick = () => abrirFicha(reg);
+  el.querySelector(".mas").onclick = (ev) => {
+    if (quitar) { quitarDeLista(reg.base, reg.i); return; }
+    agregar([[reg.base, reg.i, E.consulta]]);
+    const b = ev.currentTarget; b.textContent = "✔"; b.classList.add("ya");
+  };
+  return el;
+}
+
+async function pintarResultados() {
+  const id = ++pintadoId;
+  const cont = $("resultados");
+  const q = $("q").value.trim();
+  $("vacioBuscar").hidden = !!(E.paq && q.length >= 2) || !E.paq;
+  $("sinPaquete").hidden = !!E.paq;
+  $("bandaEjemplo").hidden = !(E.paq && E.paq.meta.ejemplo);
+  if (!E.paq || q.length < 2) { cont.replaceChildren(); $("barraRes").hidden = true; return; }
+  const n = E.hits.length;
+  const porBase = {};
+  for (const [b] of E.hits) porBase[b] = (porBase[b] || 0) + 1;
+  $("barraRes").hidden = false;
+  $("cuenta").innerHTML = `${miles(n)} resultado${n === 1 ? "" : "s"} <small>${Object.entries(porBase).map(([b, c]) => `${b.slice(0, 3)} ${miles(c)}`).join(" · ")}</small>`;
+  $("agregarTodos").hidden = n === 0;
+  $("agregarTodos").textContent = `＋ Agregar todos (${miles(n)})`;
+  const frag = document.createDocumentFragment();
+  for (const [b, i] of E.hits.slice(0, MAX_PINTAR)) {
+    const base = E.paq.bases[b];
+    const reg = new Registro(base, i, await base.fila(i), E.consulta);
+    if (id !== pintadoId) return;
+    frag.appendChild(await tarjeta(reg, E.listaSet.has(llaveDe(b, i)), false));
+  }
+  if (n > MAX_PINTAR) {
+    const a = document.createElement("div"); a.className = "aviso-lim";
+    a.textContent = `Se muestran ${MAX_PINTAR} de ${miles(n)}. Escribe más para afinar (Agregar todos sí los incluye).`;
+    frag.appendChild(a);
+  }
+  if (n === 0) {
+    const a = document.createElement("div"); a.className = "vacio";
+    a.innerHTML = "<h2>Sin coincidencias</h2><p>Revisa la CURP o prueba solo con un apellido.</p>";
+    frag.appendChild(a);
+  }
+  if (id === pintadoId) cont.replaceChildren(frag);
+}
+
+/* ======================================================================= ficha */
+async function abrirFicha(reg) {
+  E.actual = reg;
+  const f = $("ficha");
+  $("fBase").textContent = reg.base; $("fBase").className = "base " + CLASE[reg.base];
+  $("fNombre").textContent = reg.nombre || "(sin nombre)";
+  const res = [["CURP", `<span class="mono">${esc(reg.v("curp_paciente"))}</span>`], ["Nacimiento", esc(reg.v("fecha_nacimiento")) + (reg.v("sexo_des") ? " · " + esc(reg.v("sexo_des")) : "")],
+    [FECHA_TXT[reg.base], esc(reg.fecha)], ["Unidad", `${esc(reg.v("clues"))}${reg.v("nombre_jurisdiccion") ? " · " + esc(reg.v("nombre_jurisdiccion")) : ""}`], ["Folio", esc(reg.v("folio"))]];
+  $("fResumen").innerHTML = res.map(([a, b]) => `<dt>${esc(a)}</dt><dd>${b}</dd>`).join("");
+  pintarCampos();
+  actualizarBotonFicha();
+  f.hidden = false;
+  if (!matchMedia("(min-width: 900px)").matches) { try { history.pushState({ ficha: 1 }, ""); } catch {} }
+}
+function actualizarBotonFicha() {
+  if (!E.actual) return;
+  const ya = E.listaSet.has(llaveDe(E.actual.base, E.actual.i));
+  $("fAgregar").textContent = ya ? "✔ En la lista" : "＋ A la lista"; $("fAgregar").disabled = ya;
+  $("fCurp").disabled = !E.actual.v("curp_paciente");
+}
+function pintarCampos() {
+  const reg = E.actual; if (!reg) return;
+  const filtro = norm($("fFiltro").value), vacios = $("fVacios").checked;
+  const filas = reg.campos().filter(([c, v]) => (vacios || v) && (!filtro || norm(c).includes(filtro) || norm(v).includes(filtro)));
+  $("fCampos").innerHTML = filas.map(([c, v]) => `<tr><td>${esc(c)}</td><td>${esc(v)}</td></tr>`).join("") ||
+    `<tr><td colspan="2" style="color:var(--muted)">Ningún campo coincide con el filtro.</td></tr>`;
+}
+function cerrarFicha() { $("ficha").hidden = true; E.actual = null; }
+window.addEventListener("popstate", () => { if (!$("ficha").hidden) cerrarFicha(); });
+$("cerrarFicha").onclick = () => { if (history.state && history.state.ficha) history.back(); else cerrarFicha(); };
+$("fFiltro").oninput = pintarCampos; $("fVacios").onchange = pintarCampos;
+$("fAgregar").onclick = () => { if (E.actual) { agregar([[E.actual.base, E.actual.i, E.actual.consulta || E.consulta]]); } };
+$("fCurp").onclick = () => {
+  const c = E.actual && E.actual.v("curp_paciente"); if (!c) return;
+  $("q").value = c; ponerModo("curp"); BASES.forEach((b) => E.activas.add(b)); pintarChips();
+  if (history.state && history.state.ficha) history.back(); else cerrarFicha();
+  irA("buscar"); buscar();
+};
+$("fCopiar").onclick = () => {
+  const r = E.actual; if (!r) return;
+  const txt = `[${r.base}]\n` + r.campos().filter(([, v]) => v).map(([c, v]) => `${c}: ${v}`).join("\n");
+  const respaldo = () => { const t = $("copiaRespaldo"); t.hidden = false; t.value = txt; t.select(); try { document.execCommand("copy"); toast("Ficha copiada"); } catch { toast("No se pudo copiar"); } t.hidden = true; };
+  try { navigator.clipboard.writeText(txt).then(() => toast("Ficha copiada"), respaldo); } catch { respaldo(); }
+};
+
+/* ======================================================================= lista */
+function agregar(items) {
+  let nuevos = 0, ya = 0;
+  for (const [base, i, consulta] of items) {
+    if (E.lista.length >= MAX_LISTA) { toast(`La lista admite hasta ${miles(MAX_LISTA)} registros`); break; }
+    const k = llaveDe(base, i);
+    if (E.listaSet.has(k)) { ya++; continue; }
+    E.lista.push({ base, i, consulta: consulta || "" }); E.listaSet.add(k); nuevos++;
+  }
+  guardarLista(); pintarNumLista(); actualizarBotonFicha();
+  toast(`${nuevos} agregado${nuevos === 1 ? "" : "s"}${ya ? ` (${ya} ya estaba${ya === 1 ? "" : "n"})` : ""} · en la lista: ${miles(E.lista.length)}`);
+  if (E.vista === "lista") pintarLista();
+}
+function quitarDeLista(base, i) {
+  const k = llaveDe(base, i);
+  E.lista = E.lista.filter((x) => llaveDe(x.base, x.i) !== k); E.listaSet.delete(k);
+  guardarLista(); pintarNumLista(); pintarLista(); actualizarBotonFicha();
+}
+function pintarNumLista() {
+  const n = E.lista.length;
+  $("numLista").hidden = !n; $("numLista").textContent = miles(n);
+}
+let pintLista = 0;
+async function pintarLista() {
+  const id = ++pintLista;
+  const n = E.lista.length;
+  const busq = new Set(E.lista.map((x) => x.consulta)).size;
+  $("cuentaLista").textContent = n ? `${miles(n)} registro${n === 1 ? "" : "s"} de ${busq} búsqueda${busq === 1 ? "" : "s"}` : "Lista vacía";
+  $("vacioLista").hidden = n > 0; $("exportar").disabled = !n; $("vaciar").disabled = !n;
+  const frag = document.createDocumentFragment();
+  for (const x of E.lista.slice(0, MAX_PINTAR)) {
+    const b = E.paq && E.paq.bases[x.base]; if (!b) continue;
+    const reg = new Registro(b, x.i, await b.fila(x.i), x.consulta);
+    if (id !== pintLista) return;
+    frag.appendChild(await tarjeta(reg, true, true));
+  }
+  if (n > MAX_PINTAR) { const a = document.createElement("div"); a.className = "aviso-lim"; a.textContent = `Se muestran ${MAX_PINTAR} de ${miles(n)}; la exportación los lleva todos.`; frag.appendChild(a); }
+  if (id === pintLista) $("tarjetasLista").replaceChildren(frag);
+}
+$("agregarTodos").onclick = () => agregar(E.hits.slice(0, MAX_LISTA).map(([b, i]) => [b, i, E.consulta]));
+$("vaciar").onclick = () => ($("vaciarConf").hidden = false);
+$("vaciarNo").onclick = () => ($("vaciarConf").hidden = true);
+$("vaciarSi").onclick = () => { E.lista = []; E.listaSet = new Set(); guardarLista(); pintarNumLista(); pintarLista(); $("vaciarConf").hidden = true; };
+
+/* ======================================================================= Excel (.xlsx) sin librerías */
+const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+function crc32(u8) { let c = 0xFFFFFFFF; for (let i = 0; i < u8.length; i++) c = CRC[(c ^ u8[i]) & 0xFF] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+function zip(archivos) {
+  const te = new TextEncoder(), partes = [], central = []; let off = 0;
+  for (const [nombre, texto] of archivos) {
+    const nb = te.encode(nombre), datos = te.encode(texto), crc = crc32(datos);
+    const h = new DataView(new ArrayBuffer(30));
+    h.setUint32(0, 0x04034b50, true); h.setUint16(4, 20, true); h.setUint16(6, 0x0800, true); h.setUint16(8, 0, true);
+    h.setUint32(14, crc, true); h.setUint32(18, datos.length, true); h.setUint32(22, datos.length, true); h.setUint16(26, nb.length, true);
+    partes.push(h.buffer, nb, datos);
+    const c = new DataView(new ArrayBuffer(46));
+    c.setUint32(0, 0x02014b50, true); c.setUint16(4, 20, true); c.setUint16(6, 20, true); c.setUint16(8, 0x0800, true);
+    c.setUint32(16, crc, true); c.setUint32(20, datos.length, true); c.setUint32(24, datos.length, true); c.setUint16(28, nb.length, true);
+    c.setUint32(42, off, true);
+    central.push(c.buffer, nb);
+    off += 30 + nb.length + datos.length;
+  }
+  const tamC = central.reduce((s, p) => s + p.byteLength, 0);
+  const fin = new DataView(new ArrayBuffer(22));
+  fin.setUint32(0, 0x06054b50, true); fin.setUint16(8, archivos.length, true); fin.setUint16(10, archivos.length, true);
+  fin.setUint32(12, tamC, true); fin.setUint32(16, off, true);
+  return new Blob([...partes, ...central, fin.buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+}
+const xesc = (s) => String(s ?? "").replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+function letra(i) { let s = ""; i++; while (i) { const r = (i - 1) % 26; s = String.fromCharCode(65 + r) + s; i = Math.floor((i - 1) / 26); } return s; }
+// estilos: 0 normal · 1 encabezado azul · 2/3/4 título Urg/Les/Egr · 5 campo gris · 6 valor con ajuste · 7 encabezado Campo|Valor
+const EST_BASE = { Urgencias: 2, Lesiones: 3, Egresos: 4 };
+function hoja(filas, anchos, congelar) {
+  const cols = anchos.map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`).join("");
+  const sv = congelar ? `<sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>` : "";
+  const cuerpo = filas.map((f, r) => `<row r="${r + 1}">` + f.map((c, j) => {
+    if (c == null) return "";
+    const [v, s] = Array.isArray(c) ? c : [c, 0];
+    if (v === "" && !s) return "";
+    return `<c r="${letra(j)}${r + 1}" t="inlineStr"${s ? ` s="${s}"` : ""}><is><t xml:space="preserve">${xesc(v)}</t></is></c>`;
+  }).join("") + "</row>").join("");
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">${sv}<cols>${cols}</cols><sheetData>${cuerpo}</sheetData></worksheet>`;
+}
+function libro(hojas) {
+  const ns = 'xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"';
+  const archivos = [
+    ["[Content_Types].xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>${hojas.map((_, i) => `<Override PartName="/xl/worksheets/sheet${i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join("")}</Types>`],
+    ["_rels/.rels", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`],
+    ["xl/workbook.xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook ${ns}><sheets>${hojas.map(([n], i) => `<sheet name="${xesc(n)}" sheetId="${i + 1}" r:id="rId${i + 1}"/>`).join("")}</sheets></workbook>`],
+    ["xl/_rels/workbook.xml.rels", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${hojas.map((_, i) => `<Relationship Id="rId${i + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i + 1}.xml"/>`).join("")}<Relationship Id="rId${hojas.length + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`],
+    ["xl/styles.xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="4"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font><font><sz val="11"/><color rgb="FF566573"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FF1B4F72"/><name val="Calibri"/></font></fonts><fills count="7"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF1B4F72"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFC0392B"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFD68910"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FF1F618D"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFEAF2F8"/></patternFill></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="8"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/><xf numFmtId="0" fontId="1" fillId="3" borderId="0" xfId="0" applyFont="1" applyFill="1"/><xf numFmtId="0" fontId="1" fillId="4" borderId="0" xfId="0" applyFont="1" applyFill="1"/><xf numFmtId="0" fontId="1" fillId="5" borderId="0" xfId="0" applyFont="1" applyFill="1"/><xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1"/><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment wrapText="1" vertical="top"/></xf><xf numFmtId="0" fontId="3" fillId="6" borderId="0" xfId="0" applyFont="1" applyFill="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`],
+  ];
+  hojas.forEach(([, xml], i) => archivos.push([`xl/worksheets/sheet${i + 1}.xml`, xml]));
+  return zip(archivos);
+}
+async function construirExcel(items, filtro, vacios, progreso) {
+  const regs = [];
+  for (let k = 0; k < items.length; k++) {
+    const x = items[k], b = E.paq.bases[x.base];
+    regs.push(new Registro(b, x.i, await b.fila(x.i), x.consulta));
+    if (progreso && k % 200 === 0) progreso(k / items.length);
+  }
+  const H = (t) => [t, 1];
+  const resumen = [["#", "Base", "Búsqueda", "CURP", "Nombre completo", "F. nacimiento", "Edad", "Sexo", "Fecha", "CLUES", "Folio", "Diagnóstico principal"].map(H)];
+  regs.forEach((r, n) => resumen.push([String(n + 1), r.base, r.consulta, r.v("curp_paciente"), r.nombre, r.v("fecha_nacimiento"), r.edad, r.v("sexo_des") || r.v("sexo"), r.fecha, r.v("clues"), r.v("folio"), r.dx]));
+  const fichas = [], f = norm(filtro);
+  regs.forEach((r, n) => {
+    fichas.push([[`${n + 1}. ${r.base.toUpperCase()} · ${r.nombre} · CURP ${r.v("curp_paciente")} · Folio ${r.v("folio")}`, EST_BASE[r.base]], ["", EST_BASE[r.base]]]);
+    fichas.push([["Campo", 7], ["Valor", 7]]);
+    for (const [c, v] of r.campos()) {
+      if (!vacios && !v) continue;
+      if (f && !norm(c).includes(f) && !norm(v).includes(f)) continue;
+      fichas.push([[c, 5], [v, 6]]);
+    }
+    fichas.push([]);
+  });
+  const hojas = [["Resumen", hoja(resumen, [5, 11, 22, 21, 34, 12, 9, 9, 12, 13, 10, 50], true)], ["Fichas", hoja(fichas, [38, 80], false)]];
+  for (const base of BASES) {
+    const rs = regs.filter((r) => r.base === base); if (!rs.length) continue;
+    const enc = rs[0].b.enc;
+    const filas = [enc.map((h) => [h, EST_BASE[base]])].concat(rs.map((r) => enc.map((h) => r.v(h))));
+    hojas.push([`Datos ${base}`, hoja(filas, enc.map((h) => Math.min(40, Math.max(10, h.length + 2))), true)]);
+  }
+  return libro(hojas);
+}
+/* ---------- guardar (capacidad "downloads" de Claude) con plan B: copiar como tabla */
+async function pedirDescargas() {
+  // Se pide en el momento del clic (no al abrir), y si falta permiso se solicita.
+  if (!window.claude || !window.claude.use) return { d: null, estado: "sin_claude" };
+  let estado = "";
+  try {
+    const pm = await window.claude.use("permissions");
+    if (pm) {
+      estado = await pm.state("downloads");
+      if (estado === "prompt") estado = (await pm.request(["downloads"])).downloads || estado;
+    }
+  } catch {}
+  let d = null;
+  try { d = await window.claude.use("downloads"); } catch { d = null; }
+  return { d, estado: d ? "granted" : estado || "unavailable" };
+}
+const MOTIVO = {
+  denied: "No se dio permiso para guardar archivos. Puedes activarlo en los permisos de la app, o copiar la tabla.",
+  unavailable: "Esta vista de Claude no permite guardar archivos (pasa en la vista previa dentro del chat). Abre la app en página completa: en Chrome del celular entra a claude.ai, menú › Artifacts › Buscador de Pacientes. Mientras, puedes copiar la tabla.",
+  sin_claude: "No se pudo descargar el archivo. Puedes copiar la tabla.",
+  error: "No se pudo guardar el archivo. Puedes copiar la tabla.",
+};
+function fechaArchivo() {
+  const d = new Date(), z = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}${z(d.getMonth() + 1)}${z(d.getDate())}_${z(d.getHours())}${z(d.getMinutes())}`;
+}
+async function registrosLista(progreso) {
+  const regs = [];
+  for (let k = 0; k < E.lista.length; k++) {
+    const x = E.lista[k], b = E.paq.bases[x.base];
+    regs.push(new Registro(b, x.i, await b.fila(x.i), x.consulta));
+    if (progreso && k % 200 === 0) progreso(k / E.lista.length);
+  }
+  return regs;
+}
+const celda = (v) => String(v ?? "").replace(/[\t\r\n]+/g, " ");
+const tsv = (filas) => filas.map((f) => f.map(celda).join("\t")).join("\r\n");
+let copias = { resumen: "", fichas: "", datos: "" };
+async function prepararCopias() {
+  const regs = await registrosLista();
+  const resumen = [["#", "Base", "Búsqueda", "CURP", "Nombre completo", "F. nacimiento", "Edad", "Sexo", "Fecha", "CLUES", "Folio", "Diagnóstico principal"]];
+  regs.forEach((r, n) => resumen.push([n + 1, r.base, r.consulta, r.v("curp_paciente"), r.nombre, r.v("fecha_nacimiento"), r.edad, r.v("sexo_des") || r.v("sexo"), r.fecha, r.v("clues"), r.v("folio"), r.dx]));
+  const fichas = [];
+  regs.forEach((r, n) => {
+    fichas.push([`${n + 1}. ${r.base.toUpperCase()} · ${r.nombre} · CURP ${r.v("curp_paciente")} · Folio ${r.v("folio")}`]);
+    fichas.push(["Campo", "Valor"]);
+    for (const [c, v] of r.campos()) if (v) fichas.push([c, v]);
+    fichas.push([""]);
+  });
+  const datos = [];
+  for (const base of BASES) {
+    const rs = regs.filter((r) => r.base === base); if (!rs.length) continue;
+    if (datos.length) datos.push([""]);
+    datos.push([`DATOS ${base.toUpperCase()}`]);
+    datos.push(rs[0].b.enc);
+    rs.forEach((r) => datos.push(r.b.enc.map((h) => r.v(h))));
+  }
+  copias = { resumen: tsv(resumen), fichas: tsv(fichas), datos: tsv(datos) };
+}
+async function abrirPanelCopiar(estado) {
+  const pnl = $("panelExport");
+  $("pxTitulo").textContent = estado ? "No se pudo guardar el Excel" : "Copiar la lista para Excel";
+  $("pxMotivo").textContent = estado ? MOTIVO[estado] || MOTIVO.error : "";
+  $("pxMotivo").hidden = !estado;
+  $("pxFilaPermisos").hidden = estado !== "denied" && estado !== "unavailable";
+  $("pxPermisos").hidden = estado !== "denied";
+  $("pxTexto").hidden = true;
+  ["pxResumen", "pxFichas", "pxDatos"].forEach((id) => ($(id).disabled = true));
+  pnl.hidden = false; pnl.scrollIntoView({ block: "start" });
+  await prepararCopias();
+  ["pxResumen", "pxFichas", "pxDatos"].forEach((id) => ($(id).disabled = false));
+}
+function copiar(txt, que) {
+  const t = $("pxTexto");
+  const manual = () => {
+    t.hidden = false; t.value = txt; t.focus(); t.select();
+    let ok = false; try { ok = document.execCommand("copy"); } catch {}
+    toast(ok ? `${que} copiado. Pégalo en Excel.` : "Mantén presionado el texto › Seleccionar todo › Copiar", 5000);
+  };
+  try { navigator.clipboard.writeText(txt).then(() => { t.hidden = true; toast(`${que} copiado. Pégalo en Excel.`, 4000); }, manual); }
+  catch { manual(); }
+}
+$("pxResumen").onclick = () => copiar(copias.resumen, "Resumen");
+$("pxFichas").onclick = () => copiar(copias.fichas, "Fichas");
+$("pxDatos").onclick = () => copiar(copias.datos, "Datos");
+$("pxCerrar").onclick = () => ($("panelExport").hidden = true);
+$("copiarAbrir").onclick = () => { if (E.lista.length) abrirPanelCopiar(""); };
+$("pxPermisos").onclick = async () => {
+  try { const pm = await window.claude.use("permissions"); if (pm) await pm.manage(); }
+  catch { toast("Abre el menú de la app (⋯) › Permisos y activa Descargas.", 5000); }
+};
+$("pxReintentar").onclick = () => $("exportar").click();
+/* Versión independiente (abierta en Chrome, fuera de Claude): descarga normal + compartir */
+let ultimo = null;
+function descargarBlob(blob, nombre) {
+  const url = URL.createObjectURL(blob), a = document.createElement("a");
+  a.href = url; a.download = nombre; document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 60000);
+}
+function excelIndependiente(blob, nombre) {
+  ultimo = { blob, nombre };
+  let archivo = null, puede = false;
+  try { archivo = new File([blob], nombre, { type: blob.type }); puede = !!(navigator.canShare && navigator.canShare({ files: [archivo] })); } catch {}
+  descargarBlob(blob, nombre);
+  $("plTexto").textContent = `Se descargó «${nombre}» en la carpeta Descargas del celular.` + (puede ? " También puedes mandarlo directo:" : "");
+  $("plCompartir").hidden = !puede;
+  $("panelExport").hidden = true; $("panelListo").hidden = false; $("panelListo").scrollIntoView({ block: "start" });
+  toast("Excel descargado", 3000);
+}
+$("plCompartir").onclick = async () => {
+  if (!ultimo) return;
+  try { await navigator.share({ files: [new File([ultimo.blob], ultimo.nombre, { type: ultimo.blob.type })], title: ultimo.nombre }); }
+  catch (e) { if (!e || e.name !== "AbortError") toast("No se pudo compartir; el archivo está en Descargas.", 4000); }
+};
+$("plOtraVez").onclick = () => ultimo && descargarBlob(ultimo.blob, ultimo.nombre);
+$("plCerrar").onclick = () => ($("panelListo").hidden = true);
+$("exportar").onclick = async () => {
+  if (!E.lista.length) return;
+  const b = $("exportar"); b.disabled = true; b.textContent = "Preparando…";
+  try {
+    const { d, estado } = await pedirDescargas();
+    const blob = await construirExcel(E.lista, "", false, (p) => (b.textContent = `Preparando… ${Math.round(p * 100)}%`));
+    window.__ultimoExcel = blob;
+    if (!d && estado === "sin_claude") { excelIndependiente(blob, `Lista_${fechaArchivo()}.xlsx`); return; }
+    if (!d) { await abrirPanelCopiar(estado); return; }
+    try {
+      await d.save({ filename: `Lista_${fechaArchivo()}.xlsx`, data: blob });
+      $("panelExport").hidden = true;
+      toast("Excel guardado. Búscalo en Descargas.", 4000);
+    } catch (e) {
+      const c = e && e.code;
+      if (c === "declined") toast("Guardado cancelado");
+      else if (c === "rate_limited") toast("Espera un momento e inténtalo otra vez", 4000);
+      else await abrirPanelCopiar(c === "not_granted" ? "denied" : c === "unavailable" || c === "capability_disabled" ? "unavailable" : "error");
+    }
+  } finally { b.disabled = false; b.textContent = "Exportar a Excel"; }
+};
+
+/* ======================================================================= paquete: cargar / mostrar / borrar */
+function pintarPaquete() {
+  const p = E.paq;
+  $("subPaquete").textContent = !p ? "Sin paquete" : p.meta.ejemplo ? "Datos de ejemplo" : `Paquete ${String(p.meta.creado).slice(0, 10)}`;
+  $("paqEstado").textContent = !p ? "No hay paquete cargado en este celular." : p.meta.ejemplo ? "Usando datos de ejemplo ficticios." : `Paquete creado el ${p.meta.creado}.`;
+  $("paqBases").innerHTML = p ? BASES.filter((b) => p.bases[b]).map((b) => `<div><span class="${CLASE[b]}" style="font-weight:600">${b}</span><span style="color:var(--muted);flex:1;min-width:0;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.bases[b].archivoOrigen)}</span><b>${miles(p.bases[b].n)}</b></div>`).join("") : "";
+}
+async function usarPaquete(archivo, guardar) {
+  const pr = $("paqProg"); pr.hidden = false; const barra = pr.querySelector("i");
+  $("paqEstado").textContent = "Abriendo paquete…";
+  try {
+    const paq = await abrirPaquete(archivo, (p, nombre) => { barra.style.width = `${Math.round(p * 100)}%`; if (nombre) $("paqEstado").textContent = `Preparando ${nombre}…`; });
+    E.paq = paq; restaurarLista();
+    if (guardar) {
+      try { if (navigator.storage && navigator.storage.persist) await navigator.storage.persist(); await idb.put("paquete", archivo); }
+      catch { toast("No se pudo guardar el paquete en el celular; tendrás que cargarlo cada vez.", 5000); }
+    }
+    pintarPaquete(); pintarNumLista(); buscar();
+    return true;
+  } catch (e) {
+    $("paqEstado").textContent = e.message || "No se pudo abrir el paquete.";
+    return false;
+  } finally { setTimeout(() => (pr.hidden = true), 400); }
+}
+$("archivo").onchange = async (ev) => {
+  const f = ev.target.files && ev.target.files[0]; ev.target.value = "";
+  if (!f) return;
+  if (await usarPaquete(f, true)) { toast("Paquete cargado"); irA("buscar"); $("q").focus(); }
+};
+$("verEjemplo").onclick = () => { E.paq = paqueteEjemplo(); E.lista = []; E.listaSet = new Set(); pintarPaquete(); pintarNumLista(); $("q").value = "ejemplo"; buscar(); };
+$("borrarDatos").onclick = () => ($("borrarConf").hidden = false);
+$("borrarNo").onclick = () => ($("borrarConf").hidden = true);
+$("borrarSi").onclick = async () => { await borrarTodo(); $("borrarConf").hidden = true; toast("Datos borrados de este celular"); };
+async function borrarTodo() {
+  try { await idb.del("paquete"); } catch {}
+  ls.del("bp_lista"); ls.del("bp_pin");
+  E.paq = null; E.lista = []; E.listaSet = new Set(); E.hits = [];
+  pintarPaquete(); pintarNumLista(); pintarPin(); buscar(); cerrarFicha();
+}
+
+/* ======================================================================= PIN */
+async function hashPin(pin, sal) {
+  const d = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(sal + ":" + pin));
+  return Array.from(new Uint8Array(d), (b) => b.toString(16).padStart(2, "0")).join("");
+}
+let pinModo = "entrar", pinPrimero = "";
+function mostrarCandado(modo) {
+  pinModo = modo; pinPrimero = "";
+  $("pinEntrada").value = ""; $("pinError").textContent = "";
+  $("olvideConf").hidden = true;
+  $("pinOlvide").hidden = modo !== "entrar"; $("pinOmitir").hidden = modo === "entrar";
+  $("pinOmitir").textContent = modo === "crear" ? "Cancelar" : "Ahora no, usar sin PIN";
+  $("pinTitulo").textContent = modo === "entrar" ? "Escribe tu PIN" : "Crea un PIN (4 a 8 números)";
+  $("pinOk").textContent = modo === "entrar" ? "Entrar" : "Continuar";
+  $("candado").hidden = false; setTimeout(() => $("pinEntrada").focus(), 50);
+}
+$("formPin").onsubmit = async (ev) => {
+  ev.preventDefault();
+  const pin = $("pinEntrada").value.trim();
+  if (!/^\d{4,8}$/.test(pin)) { $("pinError").textContent = "El PIN debe tener de 4 a 8 números."; return; }
+  if (pinModo === "entrar") {
+    const g = ls.get("bp_pin");
+    if (g && (await hashPin(pin, g.sal)) === g.hash) { $("candado").hidden = true; desbloqueado(); }
+    else { $("pinError").textContent = "PIN incorrecto."; $("pinEntrada").value = ""; }
+    return;
+  }
+  if (!pinPrimero) { pinPrimero = pin; $("pinEntrada").value = ""; $("pinTitulo").textContent = "Repite el PIN"; $("pinError").textContent = ""; return; }
+  if (pin !== pinPrimero) { pinPrimero = ""; $("pinEntrada").value = ""; $("pinTitulo").textContent = "Crea un PIN (4 a 8 números)"; $("pinError").textContent = "No coincidieron, inténtalo de nuevo."; return; }
+  const sal = Array.from(crypto.getRandomValues(new Uint8Array(8)), (b) => b.toString(16).padStart(2, "0")).join("");
+  ls.set("bp_pin", { sal, hash: await hashPin(pin, sal) });
+  if (!ls.get("bp_pin")) toast("Este visor no permite guardar el PIN.", 4000); else toast("PIN guardado");
+  $("candado").hidden = true; pintarPin();
+};
+$("pinOmitir").onclick = () => { $("candado").hidden = true; ls.set("bp_pin_omitido", true); };
+$("pinOlvide").onclick = () => ($("olvideConf").hidden = false);
+$("olvideNo").onclick = () => ($("olvideConf").hidden = true);
+$("olvideSi").onclick = async () => { await borrarTodo(); $("candado").hidden = true; toast("Datos y PIN borrados"); };
+function pintarPin() {
+  const hay = !!ls.get("bp_pin");
+  $("pinEstado").textContent = hay ? "PIN activado." : "Sin PIN.";
+  $("pinCambiar").textContent = hay ? "Cambiar PIN" : "Poner PIN";
+  $("pinQuitar").hidden = !hay; $("bloquear").hidden = !hay;
+}
+$("pinCambiar").onclick = () => mostrarCandado("crear");
+$("pinQuitar").onclick = () => { ls.del("bp_pin"); pintarPin(); toast("PIN quitado"); };
+$("bloquear").onclick = () => mostrarCandado("entrar");
+let ocultoDesde = 0;
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) ocultoDesde = Date.now();
+  else if (ls.get("bp_pin") && ocultoDesde && Date.now() - ocultoDesde > 120000) mostrarCandado("entrar");
+});
+
+/* ======================================================================= navegación y controles */
+function irA(v) {
+  E.vista = v;
+  $("vBuscar").hidden = v !== "buscar"; $("vLista").hidden = v !== "lista"; $("vPaquete").hidden = v !== "paquete";
+  document.querySelector("header.top .busca").hidden = v !== "buscar";
+  document.querySelector("header.top .chips").hidden = v !== "buscar";
+  document.querySelectorAll("nav.abajo button").forEach((b) => (b.getAttribute("data-ir") === v ? b.setAttribute("aria-current", "page") : b.removeAttribute("aria-current")));
+  if (v === "lista") pintarLista();
+  if (v !== "buscar" && matchMedia("(min-width: 900px)").matches) cerrarFicha();
+  window.scrollTo(0, 0);
+}
+document.querySelectorAll("[data-ir]").forEach((b) => (b.onclick = () => irA(b.getAttribute("data-ir"))));
+function ponerModo(m) { E.modo = m; document.querySelectorAll(".chip.modo").forEach((c) => c.setAttribute("aria-pressed", String(c.dataset.modo === m))); }
+function pintarChips() { document.querySelectorAll(".chip.b").forEach((c) => c.setAttribute("aria-pressed", String(E.activas.has(c.dataset.base)))); }
+document.querySelectorAll(".chip.modo").forEach((c) => (c.onclick = () => { ponerModo(c.dataset.modo); buscar(); }));
+document.querySelectorAll(".chip.b").forEach((c) => (c.onclick = () => {
+  const b = c.dataset.base; E.activas.has(b) ? E.activas.delete(b) : E.activas.add(b);
+  if (!E.activas.size) E.activas.add(b);
+  pintarChips(); buscar();
+}));
+let tq;
+$("q").oninput = () => { clearTimeout(tq); tq = setTimeout(buscar, 250); };
+$("q").onkeydown = (e) => { if (e.key === "Enter") { clearTimeout(tq); buscar(); e.target.blur(); } };
+$("limpiar").onclick = () => { $("q").value = ""; buscar(); $("q").focus(); };
+function anchoLayout() {
+  const ancho = matchMedia("(min-width: 900px)").matches;
+  $("main").classList.toggle("ancho", ancho && E.vista === "buscar");
+  $("ficha").classList.toggle("lado", ancho);
+}
+matchMedia("(min-width: 900px)").addEventListener("change", anchoLayout);
+
+/* ======================================================================= arranque */
+async function desbloqueado() {
+  let archivo = null;
+  try { archivo = await idb.get("paquete"); } catch { archivo = null; }
+  if (archivo) await usarPaquete(archivo, false);
+  else { pintarPaquete(); buscar(); }
+  if (!ls.get("bp_pin") && !ls.get("bp_pin_omitido") && E.paq && !E.paq.meta.ejemplo) mostrarCandado("ofrecer");
+}
+(function iniciar() {
+  pintarPin(); anchoLayout(); pintarPaquete(); pintarResultados();
+  const vista = irA; vista("buscar");
+  const obs = new MutationObserver(anchoLayout); obs.observe($("vBuscar"), { attributes: true, attributeFilter: ["hidden"] });
+  if (ls.get("bp_pin")) mostrarCandado("entrar"); else desbloqueado();
+})();
+</script>
+
+<script>
+if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) {
+  try { navigator.serviceWorker.register("sw.js"); } catch {}
+}
+</script>
+</body>
+</html>
