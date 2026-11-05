@@ -28,6 +28,7 @@
   --urg: #C0392B;
   --les: #B9770E;
   --egr: #1F618D;
+  --ce: #117A65;
   --f-display: "Archivo", "Arial Narrow", system-ui, sans-serif;
   --f-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
   --f-mono: "IBM Plex Mono", ui-monospace, "Consolas", monospace;
@@ -37,13 +38,13 @@
   :root:not([data-theme="light"]) {
     --bg: #0F171D; --card: #17222B; --fg: #E4EBEF; --muted: #93A3AE; --line: #2A3843;
     --ink: #9CC8E6; --accent: #5DA3D3; --accent-soft: #1B3242; --ok: #52BE80; --ok-soft: #18342A;
-    --danger: #E6786C; --urg: #EC7063; --les: #F0B254; --egr: #6CB4E4; color-scheme: dark;
+    --danger: #E6786C; --urg: #EC7063; --les: #F0B254; --egr: #6CB4E4; --ce: #48C9B0; color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
   --bg: #0F171D; --card: #17222B; --fg: #E4EBEF; --muted: #93A3AE; --line: #2A3843;
   --ink: #9CC8E6; --accent: #5DA3D3; --accent-soft: #1B3242; --ok: #52BE80; --ok-soft: #18342A;
-  --danger: #E6786C; --urg: #EC7063; --les: #F0B254; --egr: #6CB4E4; color-scheme: dark;
+  --danger: #E6786C; --urg: #EC7063; --les: #F0B254; --egr: #6CB4E4; --ce: #48C9B0; color-scheme: dark;
 }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
@@ -57,7 +58,7 @@ button, input { font: inherit; color: inherit; }
 button { cursor: pointer; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .mono { font-family: var(--f-mono); font-size: .92em; letter-spacing: .02em; }
-.u { color: var(--urg); } .l { color: var(--les); } .e { color: var(--egr); }
+.u { color: var(--urg); } .l { color: var(--les); } .e { color: var(--egr); } .c { color: var(--ce); }
 
 /* ---------- cabecera */
 body { margin: 0; padding-top: env(safe-area-inset-top, 0px); }
@@ -85,6 +86,7 @@ header.top {
 .chip.b[aria-pressed="true"].u { border-color: var(--urg); color: var(--urg); background: transparent; }
 .chip.b[aria-pressed="true"].l { border-color: var(--les); color: var(--les); background: transparent; }
 .chip.b[aria-pressed="true"].e { border-color: var(--egr); color: var(--egr); background: transparent; }
+.chip.b[aria-pressed="true"].c { border-color: var(--ce); color: var(--ce); background: transparent; }
 .sepv { flex: none; width: 1px; background: var(--line); margin: 3px 2px; }
 
 /* ---------- cuerpo */
@@ -108,7 +110,7 @@ main { padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px)); }
   display: grid; grid-template-columns: 4px 1fr auto; overflow: hidden; min-width: 0; color: var(--fg);
 }
 .tarjeta .franja { background: var(--accent); }
-.tarjeta.u .franja { background: var(--urg); } .tarjeta.l .franja { background: var(--les); } .tarjeta.e .franja { background: var(--egr); }
+.tarjeta.u .franja { background: var(--urg); } .tarjeta.l .franja { background: var(--les); } .tarjeta.e .franja { background: var(--egr); } .tarjeta.c .franja { background: var(--ce); }
 .tarjeta .cuerpo { padding: 9px 10px; min-width: 0; text-align: left; border: 0; background: transparent; }
 .tarjeta .linea1 { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
 .tarjeta .base { font-size: .7rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
@@ -248,6 +250,7 @@ nav.abajo .num { background: var(--ok); color: #fff; border-radius: 999px; paddi
     <button class="chip b u" data-base="Urgencias" aria-pressed="true" type="button">Urgencias</button>
     <button class="chip b l" data-base="Lesiones" aria-pressed="true" type="button">Lesiones</button>
     <button class="chip b e" data-base="Egresos" aria-pressed="true" type="button">Egresos</button>
+    <button class="chip b c" data-base="Consulta Externa" aria-pressed="true" type="button">Consulta Ext.</button>
   </div>
 </header>
 
@@ -361,7 +364,7 @@ nav.abajo .num { background: var(--ok); color: #fff; border-radius: 999px; paddi
     <dl class="resumen" id="fResumen"></dl>
     <div class="acciones">
       <button class="btn verde" id="fAgregar" type="button">＋ A la lista</button>
-      <button class="btn" id="fCurp" type="button">Ver CURP en las 3 bases</button>
+      <button class="btn" id="fCurp" type="button">Ver CURP en todas las bases</button>
       <button class="btn" id="fCopiar" type="button">Copiar ficha</button>
     </div>
     <div class="filtro">
@@ -385,9 +388,15 @@ nav.abajo .num { background: var(--ok); color: #fff; border-radius: 999px; paddi
 /* ======================================================================= utilidades */
 const $ = (id) => document.getElementById(id);
 const BASES = ["Urgencias", "Lesiones", "Egresos"];
-const CLASE = { Urgencias: "u", Lesiones: "l", Egresos: "e" };
-const FECHA_COL = { Urgencias: "fecha_ingreso", Lesiones: "fecha_atencion", Egresos: "fecha_egreso" };
-const FECHA_TXT = { Urgencias: "Ingreso", Lesiones: "Atención", Egresos: "Egreso" };
+const CE = "Consulta Externa";
+const GRUPOS = [...BASES, CE];
+const CLASE = { Urgencias: "u", Lesiones: "l", Egresos: "e", [CE]: "c" };
+const FECHA_COL = { Urgencias: "fecha_ingreso", Lesiones: "fecha_atencion", Egresos: "fecha_egreso", [CE]: "fecha_bus" };
+const FECHA_TXT = { Urgencias: "Ingreso", Lesiones: "Atención", Egresos: "Egreso", [CE]: "Consulta" };
+// columnas de Urgencias/Lesiones/Egresos -> equivalentes en Consulta Externa
+const ALIAS = { curp_paciente: ["curppaciente", "curp"], primer_apellido: ["primerapellido"], segundo_apellido: ["segundoapellido"],
+  fecha_nacimiento: ["fechanacimiento"], sexo_des: ["sexo", "sexo_curp"], nombre_jurisdiccion: ["jurisdiccion"],
+  clave_edad_des: ["claveedad"], folio: ["numero_expediente", "folio_receta"] };
 const COLOR_XLSX = { Urgencias: "C0392B", Lesiones: "D68910", Egresos: "1F618D" };
 const MAX_PINTAR = 200, MAX_LISTA = 20000;
 
@@ -444,6 +453,9 @@ async function inflar(blob) {
 class BaseDatos {
   constructor(info, archivo, inicio, filasBloque, sep) {
     this.nombre = info.nombre; this.enc = info.enc; this.n = info.n; this.archivoOrigen = info.archivo || "";
+    this.grupo = info.grupo || info.nombre; this.clave = info.clave || info.nombre;
+    this.mes = info.mes || ""; this.modulo = info.modulo || "";
+    this.origen = this.grupo === CE ? `${this.mes} · ${this.modulo}` : "";
     this.idx = Object.fromEntries(this.enc.map((h, i) => [h, i]));
     this.bloques = info.bloques; this.llavesInfo = info.llaves;
     this.archivo = archivo; this.inicio = inicio; this.fb = filasBloque; this.sep = sep;
@@ -488,10 +500,11 @@ async function abrirPaquete(archivo, progreso) {
   const bases = {};
   let k = 0;
   for (const info of meta.bases) {
-    progreso && progreso(k / meta.bases.length, info.nombre);
+    info.clave = info.grupo ? `CE${k}` : info.nombre;
+    progreso && progreso(k / meta.bases.length, info.grupo ? `${info.grupo} ${info.mes || ""}` : info.nombre);
     const b = new BaseDatos(info, archivo, inicio, meta.filas_bloque, meta.sep || "\x1f");
     await b.cargarLlaves();
-    bases[b.nombre] = b; k++;
+    bases[b.clave] = b; k++;
   }
   progreso && progreso(1, "");
   return { meta, bases };
@@ -533,17 +546,24 @@ function paqueteEjemplo() {
 
 /* ======================================================================= registro y campos */
 class Registro {
-  constructor(base, i, fila, consulta) { this.base = base.nombre; this.b = base; this.i = i; this.fila = fila; this.consulta = consulta || ""; }
-  v(c) { const i = this.b.idx[c]; return i == null ? "" : this.fila[i] || ""; }
+  constructor(base, i, fila, consulta) { this.base = base.grupo; this.clave = base.clave; this.origen = base.origen; this.b = base; this.i = i; this.fila = fila; this.consulta = consulta || ""; }
+  v(c) {
+    const i = this.b.idx[c]; const x = i == null ? "" : this.fila[i] || "";
+    if (x || !ALIAS[c]) return x;
+    for (const a of ALIAS[c]) { const j = this.b.idx[a]; if (j != null && this.fila[j]) return this.fila[j]; }
+    return "";
+  }
   get nombre() { return [this.v("nombre"), this.v("primer_apellido"), this.v("segundo_apellido")].filter(Boolean).join(" "); }
   get fecha() { return this.v(FECHA_COL[this.base]); }
   get edad() { const e = this.v("edad"), c = this.v("clave_edad_des"); return e && c && !c.toUpperCase().includes("AÑO") ? `${e} ${c.toLowerCase()}` : e; }
   get dx() {
-    const d = this.v("cod_cie_afeccion_principal_des") || this.v("desc_afeccion_principal"), c = this.v("cod_cie_afeccion_principal");
-    return c && d && !d.includes(c) ? `${c} - ${d}` : d;
+    const d = this.v("cod_cie_afeccion_principal_des") || this.v("desc_afeccion_principal") || this.v("des_cie_10_dx1") || this.v("descripciondiagnostico1");
+    const c = this.v("cod_cie_afeccion_principal") || this.v("codigociediagnostico1");
+    return (c && d && !d.includes(c) ? `${c} - ${d}` : d) || this.v("servicioatencion") || this.v("atencion");
   }
   campos() {
     const idx = this.b.idx, omitir = new Set();
+    const pre = this.base === CE ? [["Mes", this.b.mes], ["Módulo", this.b.modulo], ["Archivo", this.b.archivoOrigen]] : [];
     for (const h of this.b.enc) for (const s of ["_des", "_desp"]) if (idx[h + s] != null) omitir.add(h + s);
     const out = [];
     for (const h of this.b.enc) {
@@ -556,13 +576,13 @@ class Registro {
       const et = h.replace(/_/g, " ").trim();
       out.push([et.charAt(0).toUpperCase() + et.slice(1).toLowerCase(), v]);
     }
-    return out;
+    return pre.concat(out);
   }
 }
 
 /* ======================================================================= estado */
 const E = {
-  paq: null, modo: "auto", activas: new Set(BASES), hits: [], consulta: "",
+  paq: null, modo: "auto", activas: new Set(GRUPOS), hits: [], consulta: "",
   lista: [], listaSet: new Set(), actual: null, vista: "buscar",
 };
 const llaveDe = (base, i) => `${base}:${i}`;
@@ -590,9 +610,9 @@ function buscar() {
   let modo = E.modo;
   if (modo === "auto") modo = tokens.length === 1 && qc.length >= 4 && /\d/.test(qc) ? "curp" : "full";
   const hits = [];
-  for (const nombre of BASES) {
-    const b = E.paq.bases[nombre];
-    if (!b || !E.activas.has(nombre)) continue;
+  for (const b of Object.values(E.paq.bases)) {
+    if (!E.activas.has(b.grupo)) continue;
+    const nombre = b.clave;
     const arr = { curp: b.curp, full: b.full, nom: b.nom, ap1: b.ap1, ap2: b.ap2 }[modo];
     const n = arr.length;
     if (modo === "full" && tokens.length > 1) {
@@ -612,7 +632,7 @@ async function tarjeta(reg, enLista, quitar) {
   el.className = `tarjeta ${CLASE[reg.base]}`;
   el.innerHTML = `<div class="franja"></div>
     <button class="cuerpo" type="button">
-      <div class="linea1"><span class="base ${CLASE[reg.base]}">${esc(reg.base)}</span><span class="fecha">${esc(FECHA_TXT[reg.base])} ${esc(reg.fecha)}</span></div>
+      <div class="linea1"><span class="base ${CLASE[reg.base]}">${esc(reg.base)}${reg.origen ? " · " + esc(reg.origen) : ""}</span><span class="fecha">${esc(FECHA_TXT[reg.base])} ${esc(reg.fecha)}</span></div>
       <div class="nom">${esc(reg.nombre) || "<i>(sin nombre)</i>"}</div>
       <div class="meta"><span class="mono">${esc(reg.v("curp_paciente"))}</span><span>${esc(reg.v("sexo_des"))}${reg.edad ? " · " + esc(reg.edad) : ""}</span>${quitar && reg.consulta ? `<span>búsqueda: ${esc(reg.consulta)}</span>` : ""}</div>
       ${reg.dx ? `<div class="dx">${esc(reg.dx)}</div>` : ""}
@@ -620,8 +640,8 @@ async function tarjeta(reg, enLista, quitar) {
     <button class="mas ${quitar ? "quitar" : enLista ? "ya" : ""}" type="button" aria-label="${quitar ? "Quitar de la lista" : "Agregar a la lista"}">${quitar ? "✕" : enLista ? "✔" : "＋"}</button>`;
   el.querySelector(".cuerpo").onclick = () => abrirFicha(reg);
   el.querySelector(".mas").onclick = (ev) => {
-    if (quitar) { quitarDeLista(reg.base, reg.i); return; }
-    agregar([[reg.base, reg.i, E.consulta]]);
+    if (quitar) { quitarDeLista(reg.clave, reg.i); return; }
+    agregar([[reg.clave, reg.i, E.consulta]]);
     const b = ev.currentTarget; b.textContent = "✔"; b.classList.add("ya");
   };
   return el;
@@ -637,9 +657,9 @@ async function pintarResultados() {
   if (!E.paq || q.length < 2) { cont.replaceChildren(); $("barraRes").hidden = true; return; }
   const n = E.hits.length;
   const porBase = {};
-  for (const [b] of E.hits) porBase[b] = (porBase[b] || 0) + 1;
+  for (const [k] of E.hits) { const g = E.paq.bases[k].grupo, e = g === CE ? "C.Ext" : g.slice(0, 3); porBase[e] = (porBase[e] || 0) + 1; }
   $("barraRes").hidden = false;
-  $("cuenta").innerHTML = `${miles(n)} resultado${n === 1 ? "" : "s"} <small>${Object.entries(porBase).map(([b, c]) => `${b.slice(0, 3)} ${miles(c)}`).join(" · ")}</small>`;
+  $("cuenta").innerHTML = `${miles(n)} resultado${n === 1 ? "" : "s"} <small>${Object.entries(porBase).map(([b, c]) => `${b} ${miles(c)}`).join(" · ")}</small>`;
   $("agregarTodos").hidden = n === 0;
   $("agregarTodos").textContent = `＋ Agregar todos (${miles(n)})`;
   const frag = document.createDocumentFragment();
@@ -666,10 +686,11 @@ async function pintarResultados() {
 async function abrirFicha(reg) {
   E.actual = reg;
   const f = $("ficha");
-  $("fBase").textContent = reg.base; $("fBase").className = "base " + CLASE[reg.base];
+  $("fBase").textContent = reg.base + (reg.origen ? " · " + reg.origen : ""); $("fBase").className = "base " + CLASE[reg.base];
   $("fNombre").textContent = reg.nombre || "(sin nombre)";
   const res = [["CURP", `<span class="mono">${esc(reg.v("curp_paciente"))}</span>`], ["Nacimiento", esc(reg.v("fecha_nacimiento")) + (reg.v("sexo_des") ? " · " + esc(reg.v("sexo_des")) : "")],
     [FECHA_TXT[reg.base], esc(reg.fecha)], ["Unidad", `${esc(reg.v("clues"))}${reg.v("nombre_jurisdiccion") ? " · " + esc(reg.v("nombre_jurisdiccion")) : ""}`], ["Folio", esc(reg.v("folio"))]];
+  if (reg.base === CE) res.splice(res.length - 1, 1, ["Archivo", esc(reg.b.archivoOrigen)]);
   $("fResumen").innerHTML = res.map(([a, b]) => `<dt>${esc(a)}</dt><dd>${b}</dd>`).join("");
   pintarCampos();
   actualizarBotonFicha();
@@ -678,7 +699,7 @@ async function abrirFicha(reg) {
 }
 function actualizarBotonFicha() {
   if (!E.actual) return;
-  const ya = E.listaSet.has(llaveDe(E.actual.base, E.actual.i));
+  const ya = E.listaSet.has(llaveDe(E.actual.clave, E.actual.i));
   $("fAgregar").textContent = ya ? "✔ En la lista" : "＋ A la lista"; $("fAgregar").disabled = ya;
   $("fCurp").disabled = !E.actual.v("curp_paciente");
 }
@@ -693,7 +714,7 @@ function cerrarFicha() { $("ficha").hidden = true; E.actual = null; }
 window.addEventListener("popstate", () => { if (!$("ficha").hidden) cerrarFicha(); });
 $("cerrarFicha").onclick = () => { if (history.state && history.state.ficha) history.back(); else cerrarFicha(); };
 $("fFiltro").oninput = pintarCampos; $("fVacios").onchange = pintarCampos;
-$("fAgregar").onclick = () => { if (E.actual) { agregar([[E.actual.base, E.actual.i, E.actual.consulta || E.consulta]]); } };
+$("fAgregar").onclick = () => { if (E.actual) { agregar([[E.actual.clave, E.actual.i, E.actual.consulta || E.consulta]]); } };
 $("fCurp").onclick = () => {
   const c = E.actual && E.actual.v("curp_paciente"); if (!c) return;
   $("q").value = c; ponerModo("curp"); BASES.forEach((b) => E.activas.add(b)); pintarChips();
@@ -702,7 +723,7 @@ $("fCurp").onclick = () => {
 };
 $("fCopiar").onclick = () => {
   const r = E.actual; if (!r) return;
-  const txt = `[${r.base}]\n` + r.campos().filter(([, v]) => v).map(([c, v]) => `${c}: ${v}`).join("\n");
+  const txt = `[${r.base}${r.origen ? " · " + r.origen : ""}]\n` + r.campos().filter(([, v]) => v).map(([c, v]) => `${c}: ${v}`).join("\n");
   const respaldo = () => { const t = $("copiaRespaldo"); t.hidden = false; t.value = txt; t.select(); try { document.execCommand("copy"); toast("Ficha copiada"); } catch { toast("No se pudo copiar"); } t.hidden = true; };
   try { navigator.clipboard.writeText(txt).then(() => toast("Ficha copiada"), respaldo); } catch { respaldo(); }
 };
@@ -778,7 +799,7 @@ function zip(archivos) {
 const xesc = (s) => String(s ?? "").replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 function letra(i) { let s = ""; i++; while (i) { const r = (i - 1) % 26; s = String.fromCharCode(65 + r) + s; i = Math.floor((i - 1) / 26); } return s; }
 // estilos: 0 normal · 1 encabezado azul · 2/3/4 título Urg/Les/Egr · 5 campo gris · 6 valor con ajuste · 7 encabezado Campo|Valor
-const EST_BASE = { Urgencias: 2, Lesiones: 3, Egresos: 4 };
+const EST_BASE = { Urgencias: 2, Lesiones: 3, Egresos: 4, [CE]: 8 };
 function hoja(filas, anchos, congelar) {
   const cols = anchos.map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`).join("");
   const sv = congelar ? `<sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>` : "";
@@ -797,7 +818,7 @@ function libro(hojas) {
     ["_rels/.rels", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`],
     ["xl/workbook.xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook ${ns}><sheets>${hojas.map(([n], i) => `<sheet name="${xesc(n)}" sheetId="${i + 1}" r:id="rId${i + 1}"/>`).join("")}</sheets></workbook>`],
     ["xl/_rels/workbook.xml.rels", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${hojas.map((_, i) => `<Relationship Id="rId${i + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i + 1}.xml"/>`).join("")}<Relationship Id="rId${hojas.length + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`],
-    ["xl/styles.xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="4"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font><font><sz val="11"/><color rgb="FF566573"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FF1B4F72"/><name val="Calibri"/></font></fonts><fills count="7"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF1B4F72"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFC0392B"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFD68910"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FF1F618D"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFEAF2F8"/></patternFill></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="8"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/><xf numFmtId="0" fontId="1" fillId="3" borderId="0" xfId="0" applyFont="1" applyFill="1"/><xf numFmtId="0" fontId="1" fillId="4" borderId="0" xfId="0" applyFont="1" applyFill="1"/><xf numFmtId="0" fontId="1" fillId="5" borderId="0" xfId="0" applyFont="1" applyFill="1"/><xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1"/><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment wrapText="1" vertical="top"/></xf><xf numFmtId="0" fontId="3" fillId="6" borderId="0" xfId="0" applyFont="1" applyFill="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`],
+    ["xl/styles.xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="4"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font><font><sz val="11"/><color rgb="FF566573"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FF1B4F72"/><name val="Calibri"/></font></fonts><fills count="8"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF1B4F72"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFC0392B"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFD68910"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FF1F618D"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFEAF2F8"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FF117A65"/></patternFill></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="9"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/><xf numFmtId="0" fontId="1" fillId="3" borderId="0" xfId="0" applyFont="1" applyFill="1"/><xf numFmtId="0" fontId="1" fillId="4" borderId="0" xfId="0" applyFont="1" applyFill="1"/><xf numFmtId="0" fontId="1" fillId="5" borderId="0" xfId="0" applyFont="1" applyFill="1"/><xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1"/><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment wrapText="1" vertical="top"/></xf><xf numFmtId="0" fontId="3" fillId="6" borderId="0" xfId="0" applyFont="1" applyFill="1"/><xf numFmtId="0" fontId="1" fillId="7" borderId="0" xfId="0" applyFont="1" applyFill="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`],
   ];
   hojas.forEach(([, xml], i) => archivos.push([`xl/worksheets/sheet${i + 1}.xml`, xml]));
   return zip(archivos);
@@ -810,11 +831,11 @@ async function construirExcel(items, filtro, vacios, progreso) {
     if (progreso && k % 200 === 0) progreso(k / items.length);
   }
   const H = (t) => [t, 1];
-  const resumen = [["#", "Base", "Búsqueda", "CURP", "Nombre completo", "F. nacimiento", "Edad", "Sexo", "Fecha", "CLUES", "Folio", "Diagnóstico principal"].map(H)];
-  regs.forEach((r, n) => resumen.push([String(n + 1), r.base, r.consulta, r.v("curp_paciente"), r.nombre, r.v("fecha_nacimiento"), r.edad, r.v("sexo_des") || r.v("sexo"), r.fecha, r.v("clues"), r.v("folio"), r.dx]));
+  const resumen = [["#", "Base", "Origen (mes · módulo)", "Búsqueda", "CURP", "Nombre completo", "F. nacimiento", "Edad", "Sexo", "Fecha", "CLUES", "Folio", "Diagnóstico principal"].map(H)];
+  regs.forEach((r, n) => resumen.push([String(n + 1), r.base, r.origen, r.consulta, r.v("curp_paciente"), r.nombre, r.v("fecha_nacimiento"), r.edad, r.v("sexo_des") || r.v("sexo"), r.fecha, r.v("clues"), r.v("folio"), r.dx]));
   const fichas = [], f = norm(filtro);
   regs.forEach((r, n) => {
-    fichas.push([[`${n + 1}. ${r.base.toUpperCase()} · ${r.nombre} · CURP ${r.v("curp_paciente")} · Folio ${r.v("folio")}`, EST_BASE[r.base]], ["", EST_BASE[r.base]]]);
+    fichas.push([[`${n + 1}. ${r.base.toUpperCase()}${r.origen ? " · " + r.origen : ""} · ${r.nombre} · CURP ${r.v("curp_paciente")}${r.base === CE ? "" : " · Folio " + r.v("folio")}`, EST_BASE[r.base]], ["", EST_BASE[r.base]]]);
     fichas.push([["Campo", 7], ["Valor", 7]]);
     for (const [c, v] of r.campos()) {
       if (!vacios && !v) continue;
@@ -823,12 +844,18 @@ async function construirExcel(items, filtro, vacios, progreso) {
     }
     fichas.push([]);
   });
-  const hojas = [["Resumen", hoja(resumen, [5, 11, 22, 21, 34, 12, 9, 9, 12, 13, 10, 50], true)], ["Fichas", hoja(fichas, [38, 80], false)]];
+  const hojas = [["Resumen", hoja(resumen, [5, 15, 30, 22, 21, 34, 12, 9, 9, 12, 13, 10, 50], true)], ["Fichas", hoja(fichas, [38, 80], false)]];
   for (const base of BASES) {
     const rs = regs.filter((r) => r.base === base); if (!rs.length) continue;
     const enc = rs[0].b.enc;
     const filas = [enc.map((h) => [h, EST_BASE[base]])].concat(rs.map((r) => enc.map((h) => r.v(h))));
     hojas.push([`Datos ${base}`, hoja(filas, enc.map((h) => Math.min(40, Math.max(10, h.length + 2))), true)]);
+  }
+  for (const mod of [...new Set(regs.filter((r) => r.base === CE).map((r) => r.b.modulo))].sort()) {
+    const rs = regs.filter((r) => r.base === CE && r.b.modulo === mod), enc = rs[0].b.enc;
+    const filas = [["mes", "archivo", ...enc].map((h) => [h, 8])].concat(rs.map((r) => [r.b.mes, r.b.archivoOrigen, ...enc.map((h) => r.v(h))]));
+    const nombre = `CE ${mod}`.replace(/[\[\]*?\/\\:]/g, "").slice(0, 31);
+    if (!hojas.some(([n]) => n === nombre)) hojas.push([nombre, hoja(filas, [10, 30, ...enc.map((h) => Math.min(40, Math.max(10, h.length + 2)))], true)]);
   }
   return libro(hojas);
 }
@@ -872,11 +899,11 @@ const tsv = (filas) => filas.map((f) => f.map(celda).join("\t")).join("\r\n");
 let copias = { resumen: "", fichas: "", datos: "" };
 async function prepararCopias() {
   const regs = await registrosLista();
-  const resumen = [["#", "Base", "Búsqueda", "CURP", "Nombre completo", "F. nacimiento", "Edad", "Sexo", "Fecha", "CLUES", "Folio", "Diagnóstico principal"]];
-  regs.forEach((r, n) => resumen.push([n + 1, r.base, r.consulta, r.v("curp_paciente"), r.nombre, r.v("fecha_nacimiento"), r.edad, r.v("sexo_des") || r.v("sexo"), r.fecha, r.v("clues"), r.v("folio"), r.dx]));
+  const resumen = [["#", "Base", "Origen (mes · módulo)", "Búsqueda", "CURP", "Nombre completo", "F. nacimiento", "Edad", "Sexo", "Fecha", "CLUES", "Folio", "Diagnóstico principal"]];
+  regs.forEach((r, n) => resumen.push([n + 1, r.base, r.origen, r.consulta, r.v("curp_paciente"), r.nombre, r.v("fecha_nacimiento"), r.edad, r.v("sexo_des") || r.v("sexo"), r.fecha, r.v("clues"), r.v("folio"), r.dx]));
   const fichas = [];
   regs.forEach((r, n) => {
-    fichas.push([`${n + 1}. ${r.base.toUpperCase()} · ${r.nombre} · CURP ${r.v("curp_paciente")} · Folio ${r.v("folio")}`]);
+    fichas.push([`${n + 1}. ${r.base.toUpperCase()}${r.origen ? " · " + r.origen : ""} · ${r.nombre} · CURP ${r.v("curp_paciente")}${r.base === CE ? "" : " · Folio " + r.v("folio")}`]);
     fichas.push(["Campo", "Valor"]);
     for (const [c, v] of r.campos()) if (v) fichas.push([c, v]);
     fichas.push([""]);
@@ -888,6 +915,13 @@ async function prepararCopias() {
     datos.push([`DATOS ${base.toUpperCase()}`]);
     datos.push(rs[0].b.enc);
     rs.forEach((r) => datos.push(r.b.enc.map((h) => r.v(h))));
+  }
+  for (const mod of [...new Set(regs.filter((r) => r.base === CE).map((r) => r.b.modulo))].sort()) {
+    const rs = regs.filter((r) => r.base === CE && r.b.modulo === mod), enc = rs[0].b.enc;
+    if (datos.length) datos.push([""]);
+    datos.push([`CONSULTA EXTERNA · ${mod.toUpperCase()}`]);
+    datos.push(["mes", "archivo", ...enc]);
+    rs.forEach((r) => datos.push([r.b.mes, r.b.archivoOrigen, ...enc.map((h) => r.v(h))]));
   }
   copias = { resumen: tsv(resumen), fichas: tsv(fichas), datos: tsv(datos) };
 }
@@ -975,7 +1009,17 @@ function pintarPaquete() {
   const p = E.paq;
   $("subPaquete").textContent = !p ? "Sin paquete" : p.meta.ejemplo ? "Datos de ejemplo" : `Paquete ${String(p.meta.creado).slice(0, 10)}`;
   $("paqEstado").textContent = !p ? "No hay paquete cargado en este celular." : p.meta.ejemplo ? "Usando datos de ejemplo ficticios." : `Paquete creado el ${p.meta.creado}.`;
-  $("paqBases").innerHTML = p ? BASES.filter((b) => p.bases[b]).map((b) => `<div><span class="${CLASE[b]}" style="font-weight:600">${b}</span><span style="color:var(--muted);flex:1;min-width:0;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.bases[b].archivoOrigen)}</span><b>${miles(p.bases[b].n)}</b></div>`).join("") : "";
+  const fila = (cls, nom, det, n) => `<div><span class="${cls}" style="font-weight:600">${esc(nom)}</span><span style="color:var(--muted);flex:1;min-width:0;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(det)}</span><b>${miles(n)}</b></div>`;
+  let html = "";
+  if (p) {
+    html = BASES.filter((b) => p.bases[b]).map((b) => fila(CLASE[b], b, p.bases[b].archivoOrigen, p.bases[b].n)).join("");
+    const ce = Object.values(p.bases).filter((b) => b.grupo === CE);
+    if (ce.length) {
+      const meses = [...new Set(ce.map((b) => b.mes))];
+      html += fila("c", CE, meses.join(", "), ce.reduce((s, b) => s + b.n, 0));
+    }
+  }
+  $("paqBases").innerHTML = html;
 }
 async function usarPaquete(archivo, guardar) {
   const pr = $("paqProg"); pr.hidden = false; const barra = pr.querySelector("i");
