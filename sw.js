@@ -1,5 +1,5 @@
 // Buscador de Pacientes — funciona sin internet. Hecho por Oscar Arredondo.
-const VERSION = "bp-v2";
+const VERSION = "bp-v3";
 const APP = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png", "./icon-maskable-512.png", "./apple-touch-icon.png"];
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(VERSION).then((c) => c.addAll(APP)).then(() => self.skipWaiting()));

@@ -307,7 +307,6 @@ nav.abajo .num { background: var(--ok); color: #fff; border-radius: 999px; paddi
       <div class="fila">
         <button class="btn solido" id="pxResumen" type="button">Copiar Resumen</button>
         <button class="btn solido" id="pxFichas" type="button">Copiar Fichas (Campo | Valor)</button>
-        <button class="btn solido" id="pxDatos" type="button">Copiar Datos completos</button>
       </div>
       <div class="fila" id="pxFilaPermisos" hidden>
         <button class="btn" id="pxPermisos" type="button">Abrir permisos de la app</button>
@@ -319,7 +318,7 @@ nav.abajo .num { background: var(--ok); color: #fff; border-radius: 999px; paddi
     <div class="lista-tarjetas" id="tarjetasLista"></div>
     <div id="vacioLista" class="vacio">
       <h2>La lista está vacía</h2>
-      <p>Busca, y con <b>＋</b> agrega registros de una o varias búsquedas. Luego expórtalos juntos a Excel: Resumen, Fichas (Campo | Valor) y Datos completos.</p>
+      <p>Busca, y con <b>＋</b> agrega registros de una o varias búsquedas. Luego expórtalos juntos a Excel: Resumen y Fichas (Campo | Valor).</p>
     </div>
   </section>
 
@@ -823,6 +822,19 @@ function libro(hojas) {
   hojas.forEach(([, xml], i) => archivos.push([`xl/worksheets/sheet${i + 1}.xml`, xml]));
   return zip(archivos);
 }
+/* Campos que NO salen en las Fichas del Excel (como se ven en la ficha). Urgencias / Lesiones / Egresos: */
+const CAMPOS_FUERA_HOSP = ["Id municipio", "Nombre municipio", "Id localidad", "Nombre localidad", "Nivel atencion", "Clave servicio", "Clave servicio ingreso desp", "Num servicios adicional", "Numero comorbilidad 1", "Descripcion comorbilidad 1", "Cod cie comorbilidad 1", "Cod cie comorbilidad 1d", "Cod cie comorbilidad 3", "Cod cie comorbilidad 3d", "Afec principal reseleccionada", "Infeccion intrahospitalaria", "Num procedimiento 1", "Numero comorbilidad 2", "Descripcion comorbilidad 2", "Cod cie comorbilidad 2", "Cod cie comorbilidad 2d", "Numero comorbilidad 3", "Cedula profesional 1", "Num procedimiento 2", "Descripcion procedimiento 2", "Cod cie procedimiento 2", "Tipoproc2", "Tipo anestesia 2", "Quirofano dentro fuera 2", "Tiempo quirofano 2", "Cedula profesional 2", "Num procedimiento 3", "Descripcion procedimiento 3", "Cod cie procedimiento 3", "Tipoproc3", "Tipo anestesia 3", "Quirofano dentro fuera 3", "Cedula profesional 3", "Violencia lesion", "Ministerio publico", "Folio certificado 1", "Apgar 5min 1", "Reanimacion neonatal 1", "Reanimacion neonatal des", "Alojamiento conjunto 1", "Alojamiento conjunto des", "Lactancia exclusiva 1", "Lactancia exclusiva des", "Tipo unidad", "Tipo servicio", "Curp responsable", "Nombre responsable", "Primer apellido responsable", "Segundo apellido responsable", "Cedula responsable", "Fecha captura", "Usuariocapturo", "Origen", "Cve migrante ret", "Desc migrante ret", "Archivo origen"];
+/* Consulta Externa: */
+const CAMPOS_FUERA_CE = ["Mun clave numerica", "Municipio", "Loc clave numerica", "Localidad", "Tipologia", "Tipo um", "Estatus operacion", "Institucion", "Unidad type", "Subtipologia", "Subtipologiad", "Curpprestador", "Nombreprestador", "Primerapellidoprestador", "Segundoapellidoprestador", "Pais nacimiento prestador", "Tipopersonal", "Cedulaprofesional", "Cedula profesional extranjera", "Servicioatencion", "Programa sm mg", "Curppaciente", "Nombre", "Primerapellido", "Segundoapellido", "Fechanacimiento", "Pais nacimiento", "Entidadnacimiento", "Edad", "Claveedad", "Sexo", "Sexo curp", "Se considera afromexicano", "Genero", "Seconsideraindigena", "Derechohabiencia", "Peso", "Talla", "Imc", "Circunferencia cintura", "Presion arterial diastolica", "Presion arterial sistolica", "Frecuencia cardiaca", "Frecuencia respiratoria", "Temperatura", "Saturacion oxigeno", "Glucosa", "Glucosa ayunas", "Tiras embarazadas sin diabetes mellitus", "Tiras paciente diabetes control", "Tipodificultad", "Gradodificultad", "Origendificultad", "Migrante", "Fechaconsulta", "Relaciontemporal", "Descripciondiagnostico1", "Suivecausesdiagnostico1", "Codigociediagnostico1", "Des cie 10 dx1", "Epi clave 1", "Confirmacion diagnostica1", "Primeravezdiagnostico2", "Confirmacion diagnostica2", "Primeravezdiagnostico3", "Confirmacion diagnostica3", "Programa", "Intervenciones smya", "Primeravezanio", "Primeravez uneme", "Sintomaticorespiratoriotb", "Atencion pregestacional", "Riesgo aten pregestacional", "Relaciontemporalembarazo", "Plan seguridad", "Trimestregestacional", "Primeravezaltoriesgo", "Complicacionpordiabetes", "Complicacionporinfeccionurinaria", "Complicacionporpreeclamsiaecl", "Complicacionporhemorragia", "Sospecha covid19", "Covid19 confirmado", "Hipertension arterial preexistente", "Otrasaccprescacidofolico", "Otrasaccapoyotranslado", "Otrasaccapoyotrasladoame", "Puerpera", "Infeccionpuerperal", "Terapiahormonal", "Peripostmenopausia", "Its", "Patologiamamariabenigna", "Cancermamario", "Colposcopia", "Cancercervicouterino", "Ninosanort", "Pruebaedi", "Resultadoedi", "Resultadobatelle", "Aplicacioncedulacancer", "Edasrt", "Edasplantratamiento", "Recuperadodeshidratacion", "Numerosobresvsotratamiento", "Numerosobresvsopromocion", "Irasrt", "Irasplantratamiento", "Neumoniart", "Informaprevencionaccidentes", "Sintoma depresiva", "Alteracion memoria", "Aivd abvd", "Sindrome caidas", "Incontinencia urinaria", "Motricidad", "Asesoria nutricional", "Lineavida", "Cartillavacunacion", "Esquemavacunacion", "Referidopor", "Contrarreferido", "Telemedicina", "Teleconsulta", "Estudiosteleconsulta", "Modalidadconsuldist", "Surtimientoanterior", "Insert date", "Anio", "Mes", "Login", "Fecha corte", "Peiis instance key", "Curp usurio capturo", "Nombre capturo", "Papellido capturo", "Sapellido capturo", "Fecha captura", "Origen", "Registro eliminado", "Fecha bus", "Institucion bus", "Jurisdiccion bus"];
+const CAMPOS_FUERA = new Set([...CAMPOS_FUERA_HOSP, ...CAMPOS_FUERA_CE].map((c) => norm(c.replace(/_/g, " "))));
+/* Las fichas del Excel omiten los campos de la lista y los que valen N/A (Mes, Módulo y Archivo de origen siempre van). */
+function camposFicha(r) {
+  return r.campos().filter(([c, v], k) => {
+    if (r.base === CE && k < 3) return true;
+    if (CAMPOS_FUERA.has(norm(c.replace(/_/g, " ")))) return false;
+    const x = norm(v); return !(x === "N/A" || x.startsWith("N/A ") || x.startsWith("N/A("));
+  });
+}
 async function construirExcel(items, filtro, vacios, progreso) {
   const regs = [];
   for (let k = 0; k < items.length; k++) {
@@ -837,7 +849,7 @@ async function construirExcel(items, filtro, vacios, progreso) {
   regs.forEach((r, n) => {
     fichas.push([[`${n + 1}. ${r.base.toUpperCase()}${r.origen ? " · " + r.origen : ""} · ${r.nombre} · CURP ${r.v("curp_paciente")}${r.base === CE ? "" : " · Folio " + r.v("folio")}`, EST_BASE[r.base]], ["", EST_BASE[r.base]]]);
     fichas.push([["Campo", 7], ["Valor", 7]]);
-    for (const [c, v] of r.campos()) {
+    for (const [c, v] of camposFicha(r)) {
       if (!vacios && !v) continue;
       if (f && !norm(c).includes(f) && !norm(v).includes(f)) continue;
       fichas.push([[c, 5], [v, 6]]);
@@ -845,18 +857,6 @@ async function construirExcel(items, filtro, vacios, progreso) {
     fichas.push([]);
   });
   const hojas = [["Resumen", hoja(resumen, [5, 15, 30, 22, 21, 34, 12, 9, 9, 12, 13, 10, 50], true)], ["Fichas", hoja(fichas, [38, 80], false)]];
-  for (const base of BASES) {
-    const rs = regs.filter((r) => r.base === base); if (!rs.length) continue;
-    const enc = rs[0].b.enc;
-    const filas = [enc.map((h) => [h, EST_BASE[base]])].concat(rs.map((r) => enc.map((h) => r.v(h))));
-    hojas.push([`Datos ${base}`, hoja(filas, enc.map((h) => Math.min(40, Math.max(10, h.length + 2))), true)]);
-  }
-  for (const mod of [...new Set(regs.filter((r) => r.base === CE).map((r) => r.b.modulo))].sort()) {
-    const rs = regs.filter((r) => r.base === CE && r.b.modulo === mod), enc = rs[0].b.enc;
-    const filas = [["mes", "archivo", ...enc].map((h) => [h, 8])].concat(rs.map((r) => [r.b.mes, r.b.archivoOrigen, ...enc.map((h) => r.v(h))]));
-    const nombre = `CE ${mod}`.replace(/[\[\]*?\/\\:]/g, "").slice(0, 31);
-    if (!hojas.some(([n]) => n === nombre)) hojas.push([nombre, hoja(filas, [10, 30, ...enc.map((h) => Math.min(40, Math.max(10, h.length + 2)))], true)]);
-  }
   return libro(hojas);
 }
 /* ---------- guardar (capacidad "downloads" de Claude) con plan B: copiar como tabla */
@@ -896,7 +896,7 @@ async function registrosLista(progreso) {
 }
 const celda = (v) => String(v ?? "").replace(/[\t\r\n]+/g, " ");
 const tsv = (filas) => filas.map((f) => f.map(celda).join("\t")).join("\r\n");
-let copias = { resumen: "", fichas: "", datos: "" };
+let copias = { resumen: "", fichas: "" };
 async function prepararCopias() {
   const regs = await registrosLista();
   const resumen = [["#", "Base", "Origen (mes · módulo)", "Búsqueda", "CURP", "Nombre completo", "F. nacimiento", "Edad", "Sexo", "Fecha", "CLUES", "Folio", "Diagnóstico principal"]];
@@ -905,25 +905,10 @@ async function prepararCopias() {
   regs.forEach((r, n) => {
     fichas.push([`${n + 1}. ${r.base.toUpperCase()}${r.origen ? " · " + r.origen : ""} · ${r.nombre} · CURP ${r.v("curp_paciente")}${r.base === CE ? "" : " · Folio " + r.v("folio")}`]);
     fichas.push(["Campo", "Valor"]);
-    for (const [c, v] of r.campos()) if (v) fichas.push([c, v]);
+    for (const [c, v] of camposFicha(r)) if (v) fichas.push([c, v]);
     fichas.push([""]);
   });
-  const datos = [];
-  for (const base of BASES) {
-    const rs = regs.filter((r) => r.base === base); if (!rs.length) continue;
-    if (datos.length) datos.push([""]);
-    datos.push([`DATOS ${base.toUpperCase()}`]);
-    datos.push(rs[0].b.enc);
-    rs.forEach((r) => datos.push(r.b.enc.map((h) => r.v(h))));
-  }
-  for (const mod of [...new Set(regs.filter((r) => r.base === CE).map((r) => r.b.modulo))].sort()) {
-    const rs = regs.filter((r) => r.base === CE && r.b.modulo === mod), enc = rs[0].b.enc;
-    if (datos.length) datos.push([""]);
-    datos.push([`CONSULTA EXTERNA · ${mod.toUpperCase()}`]);
-    datos.push(["mes", "archivo", ...enc]);
-    rs.forEach((r) => datos.push([r.b.mes, r.b.archivoOrigen, ...enc.map((h) => r.v(h))]));
-  }
-  copias = { resumen: tsv(resumen), fichas: tsv(fichas), datos: tsv(datos) };
+  copias = { resumen: tsv(resumen), fichas: tsv(fichas) };
 }
 async function abrirPanelCopiar(estado) {
   const pnl = $("panelExport");
@@ -933,10 +918,10 @@ async function abrirPanelCopiar(estado) {
   $("pxFilaPermisos").hidden = estado !== "denied" && estado !== "unavailable";
   $("pxPermisos").hidden = estado !== "denied";
   $("pxTexto").hidden = true;
-  ["pxResumen", "pxFichas", "pxDatos"].forEach((id) => ($(id).disabled = true));
+  ["pxResumen", "pxFichas"].forEach((id) => ($(id).disabled = true));
   pnl.hidden = false; pnl.scrollIntoView({ block: "start" });
   await prepararCopias();
-  ["pxResumen", "pxFichas", "pxDatos"].forEach((id) => ($(id).disabled = false));
+  ["pxResumen", "pxFichas"].forEach((id) => ($(id).disabled = false));
 }
 function copiar(txt, que) {
   const t = $("pxTexto");
@@ -950,7 +935,6 @@ function copiar(txt, que) {
 }
 $("pxResumen").onclick = () => copiar(copias.resumen, "Resumen");
 $("pxFichas").onclick = () => copiar(copias.fichas, "Fichas");
-$("pxDatos").onclick = () => copiar(copias.datos, "Datos");
 $("pxCerrar").onclick = () => ($("panelExport").hidden = true);
 $("copiarAbrir").onclick = () => { if (E.lista.length) abrirPanelCopiar(""); };
 $("pxPermisos").onclick = async () => {
